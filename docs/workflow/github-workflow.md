@@ -18,14 +18,17 @@ Build, debug, and test happen in GitHub (Actions and/or Codespaces). Not locally
 
 Lint, build, and test run via **GitHub Actions**, for both Flutter and Node/NestJS.
 
-Suggested workflow layout (to be added when the codebases land):
+| Workflow | Does | Active now? |
+|---|---|---|
+| [`schema-ci.yml`](../../.github/workflows/schema-ci.yml) | Applies the Phase 1 schema to real PostGIS, runs [`schema_assertions.sql`](../../tools/schema_assertions.sql) — 22 compliance and integrity assertions | **Yes** |
+| [`i18n-check.yml`](../../.github/workflows/i18n-check.yml) | Bangla coverage (fails on missing `bn` legal keys) + hardcoded-string scan | **Yes** (no-ops until `locales/` and source exist) |
+| [`docs-ci.yml`](../../.github/workflows/docs-ci.yml) | Internal Markdown link and anchor check | **Yes** |
+| [`api-ci.yml`](../../.github/workflows/api-ci.yml) | NestJS: lint → typecheck → unit → integration, with Postgres/PostGIS + Redis services | Skips until `api/` exists |
+| [`mobile-ci.yml`](../../.github/workflows/mobile-ci.yml) | Flutter: format → analyze → test → split-ABI release APK with size reporting | Skips until `mobile/` exists |
 
-```
-.github/workflows/
-  api-ci.yml       # NestJS: lint → typecheck → unit → integration (Postgres+PostGIS+Redis services)
-  mobile-ci.yml    # Flutter: analyze → test → build APK (profile mode)
-  i18n-check.yml   # fails on missing bn keys under legal.* / checkout.terms.*
-```
+The two application workflows detect their codebase and no-op cleanly, so they were merged ahead of the code rather than waiting.
+
+**`schema-ci.yml` is the one that matters most right now.** It is [ADR-0005](../adr/0005-compliance-in-schema.md) under test: it proves the advance-payment cap, the delivery clock, category gating and webhook idempotency are enforced by the database, not by a UI that any caller can bypass. Drop the `advance_within_cap` constraint and CI goes red.
 
 Branch protection on `main`: no direct pushes, PR required, CI must be green.
 
@@ -39,15 +42,20 @@ A `.devcontainer` config lets a GitHub-connected environment spin up **Flutter +
 
 Generated setup instructions point here first. Not to "install X on your machine."
 
-Target contents:
+Contents ([`.devcontainer/`](../../.devcontainer/)):
 
 | Component | Purpose |
 |---|---|
-| Flutter SDK | Mobile build and analyze |
-| Node.js LTS | NestJS API |
-| PostgreSQL + PostGIS | System of record, geo queries |
-| Redis | Cache, sessions, rate limits |
-| Seed script | Dhaka-area sample locations, categories, listings |
+| Flutter SDK (pinned) | Mobile analyze and test |
+| Node.js 20 | NestJS API |
+| PostgreSQL 16 + PostGIS 3.4 | System of record, geo queries |
+| Redis 7 | Cache, sessions, rate limits |
+| [`post-create.sh`](../../.devcontainer/post-create.sh) | Applies the Phase 1 schema and seed, installs deps if the codebases exist |
+| [`seed.sql`](../../.devcontainer/seed.sql) | Dhaka-area locations, categories, merchants and listings |
+
+The seed is built to exercise the awkward paths, not just the happy one: a listing with **no GPS point** (manual address fallback), a **not-ready-to-ship** listing (10% advance cap), a **Chattogram** location (10-day delivery clock), a merchant **mid-KYC** who must not be able to publish, and one human holding **both** customer and merchant roles.
+
+The Android SDK is deliberately not in the image — CI builds the APK, and leaving it out keeps the container an order of magnitude smaller to spin up.
 
 ## Config and secrets
 

@@ -42,6 +42,11 @@ Making a design decision | [ADR index](adr/README.md) → write a new ADR
 ### Decisions
 - [ADR index](adr/README.md) — architecture decision records
 
+### Automation
+- [`.devcontainer/`](../.devcontainer/) — Codespaces environment: Flutter + Node + PostGIS + Redis, schema and seed applied automatically
+- [`.github/workflows/`](../.github/workflows/) — schema, i18n, docs, API and mobile CI
+- [`tools/`](../tools/) — `schema_assertions.sql`, `i18n_check.py`, `hardcoded_string_check.py`, `link_check.py`
+
 ### Reference
 - [Glossary](glossary.md) — BD-specific and project-specific terms
 - [Roadmap](roadmap.md) — phase gating and what "done" means per phase

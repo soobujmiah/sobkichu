@@ -1,0 +1,34 @@
+name: i18n check
+
+# Enforces docs/localization/i18n-conventions.md.
+#
+# The hard rule: legal / checkout-terms keys MUST exist in Bangla.
+# Refund, return and delivery terms must be displayed in Bangla under the
+# Digital Commerce Operation Guidelines 2021 (compliance matrix row C6).
+# Silently falling back to English for those strings is the exact failure
+# the guideline prohibits, so a missing bn legal key fails the build.
+#
+# Runs today: the checker no-ops cleanly until locales/ exists.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  i18n:
+    name: Bangla coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check translation key coverage
+        run: python3 tools/i18n_check.py
+
+      - name: Check for hardcoded user-facing strings
+        run: python3 tools/hardcoded_string_check.py

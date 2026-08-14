@@ -1,0 +1,139 @@
+name: Mobile CI
+
+# Flutter: format -> analyze -> test -> build APK.
+#
+# Android-only build by design: Android matters far more for BD device
+# demographics (master prompt Section 3), and an iOS build needs a macOS
+# runner we do not need to pay for yet.
+#
+# Note what this workflow CANNOT tell you: whether the app performs on the
+# 2-4GB RAM target. CI builds and unit-tests; it does not benchmark on
+# low-end hardware, and neither does the Redmi Turbo 4 Pro QA device.
+# See docs/workflow/testing-strategy.md.
+#
+# Skips cleanly until mobile/ exists.
+
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/mobile-ci.yml']
+  pull_request:
+    paths: ['mobile/**', '.github/workflows/mobile-ci.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: mobile-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.24.5'
+
+jobs:
+  detect:
+    name: Detect mobile codebase
+    runs-on: ubuntu-latest
+    outputs:
+      exists: ${{ steps.check.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -f mobile/pubspec.yaml ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::mobile/ not scaffolded yet — Mobile CI is a no-op."
+          fi
+
+  analyze:
+    name: Format, analyze, test
+    needs: detect
+    if: needs.detect.outputs.exists == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Fetch packages
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Verify formatting
+        working-directory: mobile
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        working-directory: mobile
+        run: flutter analyze --fatal-infos
+
+      - name: Widget and unit tests
+        # Includes the mechanical accessibility assertions: touch target
+        # sizes, contrast, text alternatives for icon-only controls.
+        # See docs/ux/accessibility-baseline.md.
+        working-directory: mobile
+        run: flutter test --coverage
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-coverage
+          path: mobile/coverage/lcov.info
+          if-no-files-found: ignore
+
+  build-apk:
+    name: Build Android APK
+    needs: [detect, analyze]
+    if: needs.detect.outputs.exists == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Fetch packages
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Build release APK (split per ABI)
+        # Split per ABI: download size is a real cost on metered BD mobile
+        # data, not a nice-to-have (master prompt Section 3).
+        working-directory: mobile
+        run: flutter build apk --release --split-per-abi
+
+      - name: Report APK size
+        working-directory: mobile
+        run: |
+          echo "### APK sizes" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ABI | Size |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          for f in build/app/outputs/flutter-apk/*.apk; do
+            [ -e "$f" ] || continue
+            echo "| $(basename "$f") | $(du -h "$f" | cut -f1) |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "> Download size matters on metered mobile data." >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sobkichu-apk
+          path: mobile/build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+
+      - name: Performance sign-off reminder
+        run: |
+          echo "::notice title=Not a performance sign-off::A green CI build says nothing about performance on the 2-4GB RAM target. Neither does a pass on the Redmi Turbo 4 Pro. A low-end profile check is still required — see docs/workflow/testing-strategy.md"

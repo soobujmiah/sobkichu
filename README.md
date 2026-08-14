@@ -59,6 +59,22 @@ docs/
   glossary.md · roadmap.md
 ```
 
+## Getting started
+
+Open the repo in **GitHub Codespaces**. The [devcontainer](.devcontainer/) brings up Flutter + Node + PostgreSQL/PostGIS + Redis, applies the Phase 1 schema, and seeds Dhaka sample data — no local install. There is no canonical local copy of this project; build, test and debug happen in a GitHub-connected environment ([why](docs/workflow/github-workflow.md)).
+
+## CI
+
+| Workflow | Checks | Active |
+|---|---|---|
+| `schema-ci` | Phase 1 schema against real PostGIS + 22 compliance/integrity assertions | ✅ now |
+| `i18n-check` | Bangla coverage for legal keys; no hardcoded strings in either language | ✅ now |
+| `docs-ci` | Internal Markdown links and anchors | ✅ now |
+| `api-ci` | NestJS lint → typecheck → unit → integration | skips until `api/` |
+| `mobile-ci` | Flutter format → analyze → test → split-ABI APK | skips until `mobile/` |
+
+`schema-ci` is [ADR-0005](docs/adr/0005-compliance-in-schema.md) under test — it proves the advance-payment cap and delivery clock are enforced by the database rather than by a UI any caller can bypass.
+
 ## Status
 
-Phase 1, pre-code. The specification and documentation set are in place; the Flutter and NestJS codebases are not yet scaffolded. `docs/data-model/phase-1-schema.sql` is the ready-to-apply starting schema.
+Phase 1, pre-code. Specification, documentation, dev environment and CI are in place. The Flutter and NestJS codebases are not yet scaffolded — [`docs/data-model/phase-1-schema.sql`](docs/data-model/phase-1-schema.sql) is the ready-to-apply starting schema, and it is already exercised by CI.

@@ -33,6 +33,10 @@ These are not optional and they are not ordinary unit tests — they encode lega
 
 A change that breaks one of these is a compliance regression, not a failing test. It does not get a `skip`.
 
+**Ten of these already run**, at the schema level, before any application code exists — [`tools/schema_assertions.sql`](../../tools/schema_assertions.sql), executed by [`schema-ci.yml`](../../.github/workflows/schema-ci.yml) against a real PostGIS instance. The advance-cap, delivery-clock, category-gating and webhook-idempotency rows are covered there. The mixed-cart and Bangla-legal-text rows need application code and translation bundles respectively.
+
+Verified to fail correctly: dropping the `advance_within_cap` constraint turns CI red with `ASSERTION FAILED: C1`. A compliance test that cannot fail is decoration.
+
 ## Offline and connectivity tests
 
 | Scenario | Expected |

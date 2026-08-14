@@ -1,0 +1,49 @@
+# Devcontainer services for Sobkichu.
+# Master prompt Section 4: a GitHub-connected environment must spin up
+# Flutter + Node + PostgreSQL/PostGIS + Redis with no manual local setup.
+
+services:
+  workspace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://sobkichu:sobkichu@db:5432/sobkichu
+      REDIS_URL: redis://cache:6379
+
+  db:
+    # PostGIS is not optional — the 1-10km radius discovery search depends on it.
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sobkichu
+      POSTGRES_PASSWORD: sobkichu
+      POSTGRES_DB: sobkichu
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sobkichu -d sobkichu"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:

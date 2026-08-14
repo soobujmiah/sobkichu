@@ -1,0 +1,111 @@
+name: API CI
+
+# NestJS: lint -> typecheck -> unit -> integration against real
+# PostgreSQL/PostGIS + Redis services.
+#
+# Master prompt Section 4: build/debug/test happen in GitHub Actions, not
+# locally and not in an AI session sandbox. This is where a real build/test
+# pass actually occurs.
+#
+# Skips cleanly until api/ exists, so it can be merged ahead of the codebase.
+
+on:
+  push:
+    branches: [main]
+    paths: ['api/**', '.github/workflows/api-ci.yml']
+  pull_request:
+    paths: ['api/**', '.github/workflows/api-ci.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: api-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    name: Detect API codebase
+    runs-on: ubuntu-latest
+    outputs:
+      exists: ${{ steps.check.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -f api/package.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::api/ not scaffolded yet — API CI is a no-op."
+          fi
+
+  build:
+    name: Lint, typecheck, test
+    needs: detect
+    if: needs.detect.outputs.exists == 'true'
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: sobkichu
+          POSTGRES_PASSWORD: sobkichu
+          POSTGRES_DB: sobkichu_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sobkichu -d sobkichu_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      # Secrets come from GitHub, never a committed .env (Section 4).
+      DATABASE_URL: postgresql://sobkichu:sobkichu@localhost:5432/sobkichu_test
+      REDIS_URL: redis://localhost:6379
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: api
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        working-directory: api
+        run: npm run lint --if-present
+
+      - name: Typecheck
+        working-directory: api
+        run: npx tsc --noEmit
+
+      - name: Apply Phase 1 schema
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f docs/data-model/phase-1-schema.sql
+
+      - name: Unit tests
+        working-directory: api
+        run: npm test --if-present -- --ci
+
+      - name: Integration tests
+        working-directory: api
+        run: npm run test:e2e --if-present -- --ci
+
+      - name: Compliance regression tests
+        # These encode legal obligations (docs/compliance/compliance-matrix.md).
+        # A failure here is a compliance regression, not a flaky test.
+        working-directory: api
+        run: npm run test:compliance --if-present -- --ci

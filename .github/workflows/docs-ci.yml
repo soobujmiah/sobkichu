@@ -1,0 +1,27 @@
+name: Docs CI
+
+# Documentation is part of the deliverable here, not an afterthought:
+# the repo IS the source of truth (master prompt Section 4), and much of the
+# compliance reasoning lives only in docs/. Broken links rot it silently.
+
+on:
+  push:
+    branches: [main]
+    paths: ['**/*.md', 'tools/link_check.py', '.github/workflows/docs-ci.yml']
+  pull_request:
+    paths: ['**/*.md', 'tools/link_check.py', '.github/workflows/docs-ci.yml']
+  workflow_dispatch:
+
+jobs:
+  links:
+    name: Internal link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check internal links
+        run: python3 tools/link_check.py
