@@ -55,10 +55,7 @@ export interface AdvanceCapInput {
   readonly isEscrow: boolean;
 }
 
-export type AdvanceCapReason =
-  | 'escrow'
-  | 'all_items_ready_to_ship'
-  | 'standard_cap';
+export type AdvanceCapReason = 'escrow' | 'all_items_ready_to_ship' | 'standard_cap';
 
 export interface AdvanceCapResult {
   /** Maximum permitted advance, in poisha. */
@@ -124,9 +121,7 @@ export class AdvanceCapExceededError extends Error {
     readonly reason: AdvanceCapReason,
   ) {
     // Developer-facing only; the client renders messageKey.
-    super(
-      `Advance ${requested} poisha exceeds cap ${cap} poisha (${reason})`,
-    );
+    super(`Advance ${requested} poisha exceeds cap ${cap} poisha (${reason})`);
     this.name = 'AdvanceCapExceededError';
   }
 }

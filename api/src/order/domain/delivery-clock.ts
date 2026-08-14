@@ -85,9 +85,7 @@ export interface DeliveryDeadline {
  * happens in the same database transaction that records the advance payment
  * (see docs/architecture/backend-modules.md, order-creation path step 6).
  */
-export function computeDeliveryDeadline(
-  input: DeliveryDeadlineInput,
-): DeliveryDeadline {
+export function computeDeliveryDeadline(input: DeliveryDeadlineInput): DeliveryDeadline {
   const { advancePaidAt, sameCity } = input;
 
   if (Number.isNaN(advancePaidAt.getTime())) {
