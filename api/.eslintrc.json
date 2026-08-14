@@ -32,18 +32,38 @@
         "patterns": [
           {
             "group": [
-              "**/identity/**",
-              "**/location/**",
-              "**/catalog/**",
-              "**/order/**",
-              "**/payment/**",
-              "**/notification/**",
-              "**/admin/**",
-              "**/dispatch/**",
-              "**/ledger/**",
-              "**/community/**"
+              "../identity/**",
+              "../../identity/**",
+              "src/identity/**",
+              "../location/**",
+              "../../location/**",
+              "src/location/**",
+              "../catalog/**",
+              "../../catalog/**",
+              "src/catalog/**",
+              "../order/**",
+              "../../order/**",
+              "src/order/**",
+              "../payment/**",
+              "../../payment/**",
+              "src/payment/**",
+              "../notification/**",
+              "../../notification/**",
+              "src/notification/**",
+              "../admin/**",
+              "../../admin/**",
+              "src/admin/**",
+              "../dispatch/**",
+              "../../dispatch/**",
+              "src/dispatch/**",
+              "../ledger/**",
+              "../../ledger/**",
+              "src/ledger/**",
+              "../community/**",
+              "../../community/**",
+              "src/community/**"
             ],
-            "message": "Cross-module imports are not allowed (docs/architecture/backend-modules.md boundary rule 1). Call the owning module's public interface instead. src/common/ is shared infrastructure and is exempt."
+            "message": "Cross-module import. Modules must not reach into each other's internals (docs/architecture/backend-modules.md, boundary rule 1). Depend on a port in src/common/ports/ instead. src/common/ is shared infrastructure and is always allowed."
           }
         ]
       }

@@ -24,10 +24,23 @@ Each row maps a rule to the **specific field or code path that enforces it**, so
 ```
 advance_cap = (is_escrow OR all_items_ready_to_ship)
                 ? total_bdt
-                : round(total_bdt * 0.10, 2)
+                : floor(total_bdt * 0.10)
 ```
 
+Implemented in [`api/src/order/domain/advance-cap.ts`](../../api/src/order/domain/advance-cap.ts), applied in [`order.service.ts`](../../api/src/order/order.service.ts).
+
 Computed at order creation from server-side data only. A client-supplied advance amount is validated against it and rejected on breach — never clamped silently, because a silent clamp hides a merchant misconfiguring `ready_to_ship`.
+
+Four implementation decisions, all of which need counsel confirmation:
+
+| Decision | What we do | The alternative |
+|---|---|---|
+| **Mixed cart** | One non-ready item caps the **whole order** at 10% | Per-line caps summed, allowing 100% on the ready items |
+| **Basis** | 10% of the order **total including delivery fee** | 10% of goods subtotal only, which permits a larger advance |
+| **Rounding** | `floor` — always **down** | `round`, which could authorise a fraction above the ceiling |
+| **Escrow** | Only for an **admin-configured** approved provider; defaults off | Per-merchant self-declaration |
+
+Each is the more restrictive reading. If counsel disagrees on any of them, the change is confined to `computeAdvanceCap` and its callers.
 
 ## Bangladesh Bank
 

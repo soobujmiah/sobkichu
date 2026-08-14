@@ -45,7 +45,16 @@ export interface CartLine {
 
 export interface AdvanceCapInput {
   readonly lines: readonly CartLine[];
-  /** Total order value in poisha, including delivery fee. */
+  /**
+   * Total order value in poisha, INCLUDING the delivery fee.
+   *
+   * Judgement call: DCOG 2021 says "10% of product price", which could be
+   * read as goods-only. We apply the cap to the full order total, which is
+   * the more restrictive reading -- a goods-only basis would permit a
+   * slightly larger advance. Flagged for counsel alongside the mixed-cart
+   * question; if they read it as goods-only, the caller passes the subtotal
+   * instead and nothing else changes.
+   */
   readonly total: Poisha;
   /**
    * Whether this order is settled through a Bangladesh Bank-approved escrow
