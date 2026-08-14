@@ -6,7 +6,7 @@ Governed by [`MASTER_PROMPT.md`](../MASTER_PROMPT.md). Structure follows [backen
 
 ## Status
 
-The **full order lifecycle runs against real PostgreSQL** — create, pay, confirm, delivery clock. 101 tests green in CI (85 unit + 16 integration).
+The **full order lifecycle runs against real PostgreSQL** — create, pay, confirm, delivery clock, notify. 135 tests green in CI (119 unit + 16 integration).
 
 | File | What it is |
 |---|---|
@@ -19,12 +19,21 @@ The **full order lifecycle runs against real PostgreSQL** — create, pay, confi
 | [`src/order/order.repository.ts`](src/order/order.repository.ts) | SQL for app_order, order_item, order_status_event |
 | [`src/payment/payment.service.ts`](src/payment/payment.service.ts) | Settlement webhook — idempotent, starts the delivery clock |
 | [`src/payment/webhook-signature.ts`](src/payment/webhook-signature.ts) | HMAC verification over the raw body |
+| [`src/notification/`](src/notification/) | Transactional outbox — mandatory SMS alongside push |
 
 Adapters for all three ports are in place, so the path reads real listings, addresses and merchant KYC state.
 
 The settlement webhook is in place, so orders now receive a regulated delivery deadline when an advance payment settles.
 
-Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), the notification module (push + mandatory SMS), and the auth guard (the controller hardcodes a customer id with a `TODO(identity)`).
+Notifications are queued transactionally and dispatched out of band, so SMS is guaranteed rather than hoped for.
+
+Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, and the auth guard (the controller hardcodes a customer id with a `TODO(identity)`).
+
+## Why notifications use an outbox
+
+Sending inside the settlement transaction would let a slow SMS gateway hold a write transaction open, and a gateway failure would roll back a payment that genuinely settled. Sending after the commit risks the opposite: the process dies between commit and send, and a buyer is never told their order was confirmed.
+
+The outbox writes the *intent* to notify inside the same transaction as the state change. A separate dispatcher calls the gateways. Delivery becomes at-least-once instead of maybe-once — the right trade-off for a channel a user relies on to learn their money moved.
 
 ## The transaction boundary
 
