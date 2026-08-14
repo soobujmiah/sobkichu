@@ -53,7 +53,7 @@ describeIfDb('order creation against real PostgreSQL', () => {
       new LocationAdapter(pool),
       new MerchantAdapter(pool),
       uow,
-      new NotificationAdapter(pool, new NotificationRepository()),
+      new NotificationAdapter(new NotificationRepository()),
       new OrderRepository(),
     );
 

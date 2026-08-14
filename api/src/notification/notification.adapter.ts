@@ -5,10 +5,8 @@
  * channel, so a push failure can never suppress the mandatory SMS.
  */
 
-import { Inject, Injectable } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Injectable } from '@nestjs/common';
 
-import { PG_POOL } from '../common/database/pg.provider';
 import { TransactionContext } from '../common/database/unit-of-work';
 import { NotificationPort, NotificationRequest } from '../common/ports/notification.port';
 
@@ -22,10 +20,10 @@ interface RecipientRow {
 
 @Injectable()
 export class NotificationAdapter implements NotificationPort {
-  constructor(
-    @Inject(PG_POOL) private readonly pool: Pool,
-    private readonly outbox: NotificationRepository,
-  ) {}
+  // No pool here on purpose: every read and write goes through the caller's
+  // TransactionContext, so the outbox row commits atomically with the state
+  // change that caused it.
+  constructor(private readonly outbox: NotificationRepository) {}
 
   async enqueue(tx: TransactionContext, request: NotificationRequest): Promise<void> {
     // Read the recipient through the transaction: if the caller's work rolls

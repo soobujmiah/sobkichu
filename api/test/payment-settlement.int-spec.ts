@@ -50,14 +50,14 @@ describeIfDb('payment settlement against real PostgreSQL', () => {
       new LocationAdapter(pool),
       new MerchantAdapter(pool),
       uow,
-      new NotificationAdapter(pool, new NotificationRepository()),
+      new NotificationAdapter(new NotificationRepository()),
       orderRepo,
     );
 
     paymentService = new PaymentService(
       uow,
       new OrderAdapter(orderRepo),
-      new NotificationAdapter(pool, new NotificationRepository()),
+      new NotificationAdapter(new NotificationRepository()),
       new PaymentRepository(),
     );
 
