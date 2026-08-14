@@ -8,6 +8,9 @@
 
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 
+import { AuthenticatedCaller } from '../identity/auth.guard';
+import { Caller } from '../identity/caller.decorator';
+
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreatedOrder, OrderService } from './order.service';
 
@@ -17,14 +20,14 @@ export class OrderController {
 
   @Post()
   @HttpCode(201)
-  async create(@Body() dto: CreateOrderDto): Promise<CreatedOrder> {
-    // TODO(identity): customerUserId comes from the authenticated session
-    // once the auth guard lands. Role claims are never read from the body --
-    // see docs/architecture/backend-modules.md, cross-cutting concerns.
-    const customerUserId = '00000000-0000-0000-0000-000000000000';
-
+  async create(
+    @Body() dto: CreateOrderDto,
+    @Caller() caller: AuthenticatedCaller,
+  ): Promise<CreatedOrder> {
     return this.orders.createOrder({
-      customerUserId,
+      // From the verified session, never from the body: reading it from the
+      // request would let any client place orders as any user.
+      customerUserId: caller.userId,
       merchantRoleId: dto.merchantRoleId,
       deliveryLocationId: dto.deliveryLocationId,
       paymentMethod: dto.paymentMethod,

@@ -23,6 +23,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 
+import { Public } from '../identity/public.decorator';
+
 import { AggregatorWebhookDto } from './dto/aggregator-webhook.dto';
 import { PaymentService } from './payment.service';
 import { verifyWebhookSignature } from './webhook-signature';
@@ -34,6 +36,9 @@ export class PaymentController {
     private readonly config: ConfigService,
   ) {}
 
+  // No session: an external payment provider cannot hold one. It
+  // authenticates with an HMAC signature over the raw body instead.
+  @Public()
   @Post(':aggregator')
   @HttpCode(200)
   async handle(

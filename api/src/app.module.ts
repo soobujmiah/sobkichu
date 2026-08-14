@@ -8,9 +8,11 @@
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 
 import { CatalogModule } from './catalog/catalog.module';
 import { DatabaseModule } from './common/database/database.module';
+import { AuthGuard } from './identity/auth.guard';
 import { IdentityModule } from './identity/identity.module';
 import { LocationModule } from './location/location.module';
 import { NotificationModule } from './notification/notification.module';
@@ -27,6 +29,12 @@ import { PaymentModule } from './payment/payment.module';
     CatalogModule,
     OrderModule,
     PaymentModule,
+  ],
+  providers: [
+    // Global: a new endpoint is protected by default. Opt out explicitly
+    // with @Public(). The failure mode of opt-in auth is a forgotten
+    // decorator on an endpoint that moves money.
+    { provide: APP_GUARD, useClass: AuthGuard },
   ],
 })
 export class AppModule {}

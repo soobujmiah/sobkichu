@@ -112,6 +112,11 @@ jobs:
       DATABASE_URL: postgresql://sobkichu:sobkichu@localhost:5432/sobkichu_test
       REDIS_URL: redis://localhost:6379
       NODE_ENV: test
+      # Test-only values. Real secrets come from GitHub Actions secrets
+      # (Section 4); these exist so the auth code paths are exercisable.
+      OTP_SECRET: ci-otp-secret
+      SESSION_SECRET: ci-session-secret
+      PAYMENT_WEBHOOK_SECRET: ci-webhook-secret
 
     steps:
       - uses: actions/checkout@v4
