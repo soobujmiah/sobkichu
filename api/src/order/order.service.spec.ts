@@ -20,10 +20,7 @@ import {
 } from '../common/ports/catalog.port';
 import { LocationPort, ResolvedLocation } from '../common/ports/location.port';
 import { MerchantPort, MerchantSummary } from '../common/ports/merchant.port';
-import {
-  NotificationPort,
-  NotificationRequest,
-} from '../common/ports/notification.port';
+import { NotificationPort, NotificationRequest } from '../common/ports/notification.port';
 import { TransactionContext, UnitOfWork } from '../common/database/unit-of-work';
 
 import { OrderService } from './order.service';

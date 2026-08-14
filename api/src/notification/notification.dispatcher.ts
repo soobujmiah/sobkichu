@@ -15,12 +15,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { UNIT_OF_WORK, UnitOfWork } from '../common/database/unit-of-work';
 
-import {
-  PUSH_GATEWAY,
-  PushGateway,
-  SMS_GATEWAY,
-  SmsGateway,
-} from './gateways';
+import { PUSH_GATEWAY, PushGateway, SMS_GATEWAY, SmsGateway } from './gateways';
 import { NotificationRepository, OutboxRow } from './notification.repository';
 import { renderTemplate } from './domain/render';
 

@@ -31,10 +31,7 @@ import {
   UNIT_OF_WORK,
   UnitOfWork,
 } from '../common/database/unit-of-work';
-import {
-  NOTIFICATION_PORT,
-  NotificationPort,
-} from '../common/ports/notification.port';
+import { NOTIFICATION_PORT, NotificationPort } from '../common/ports/notification.port';
 import { ORDER_PORT, OrderPort } from '../common/ports/order.port';
 import { computeDeliveryDeadline } from '../common/compliance/delivery-clock';
 

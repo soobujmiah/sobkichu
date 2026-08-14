@@ -9,11 +9,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { TransactionContext } from '../common/database/unit-of-work';
-import {
-  OrderCustomer,
-  OrderForSettlement,
-  OrderPort,
-} from '../common/ports/order.port';
+import { OrderCustomer, OrderForSettlement, OrderPort } from '../common/ports/order.port';
 
 import { OrderRepository, OrderStatus } from './order.repository';
 

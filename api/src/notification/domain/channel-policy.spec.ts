@@ -8,12 +8,7 @@
 
 import { NotifiableEvent } from '../../common/ports/notification.port';
 import { knownTemplateKeys } from './render';
-import {
-  channelsFor,
-  knownEvents,
-  requiresSms,
-  templateKeyFor,
-} from './channel-policy';
+import { channelsFor, knownEvents, requiresSms, templateKeyFor } from './channel-policy';
 
 describe('channel policy', () => {
   describe('SMS is mandatory (Section 8)', () => {

@@ -38,6 +38,29 @@ def check(path: str) -> list[str]:
         if re.search(r"[ \t]+$", line):
             problems.append(f"{path}:{i}: trailing whitespace")
 
+    # Multi-line import braces that would fit on one line. Prettier joins
+    # these, so hand-wrapping them is a violation. This class accounted for
+    # nine failures in a single CI run before being checked here.
+    i = 0
+    while i < len(lines):
+        if re.match(r"^import\s*\{\s*$", lines[i].strip()):
+            names: list[str] = []
+            j = i + 1
+            while j < len(lines) and "}" not in lines[j]:
+                names.append(lines[j].strip().rstrip(","))
+                j += 1
+            if j < len(lines):
+                tail = lines[j].strip()  # "} from 'x';"
+                joined = f"import {{ {', '.join(names)} {tail}"
+                if len(joined) <= PRINT_WIDTH and names:
+                    problems.append(
+                        f"{path}:{i + 1}: import fits on one line "
+                        f"({len(joined)} chars) -- Prettier will join it"
+                    )
+            i = j + 1
+            continue
+        i += 1
+
     # A call opened at end of line, one argument, closed on a later line.
     # If the joined form fits, Prettier collapses it.
     for i in range(len(lines) - 2):

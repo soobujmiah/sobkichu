@@ -10,10 +10,7 @@ import { Pool } from 'pg';
 
 import { PG_POOL } from '../common/database/pg.provider';
 import { TransactionContext } from '../common/database/unit-of-work';
-import {
-  NotificationPort,
-  NotificationRequest,
-} from '../common/ports/notification.port';
+import { NotificationPort, NotificationRequest } from '../common/ports/notification.port';
 
 import { channelsFor, templateKeyFor } from './domain/channel-policy';
 import { NotificationRepository } from './notification.repository';

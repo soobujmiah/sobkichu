@@ -28,10 +28,7 @@ import {
   ResolvedCartLine,
 } from '../common/ports/catalog.port';
 import { LOCATION_PORT, LocationPort } from '../common/ports/location.port';
-import {
-  NOTIFICATION_PORT,
-  NotificationPort,
-} from '../common/ports/notification.port';
+import { NOTIFICATION_PORT, NotificationPort } from '../common/ports/notification.port';
 import { MERCHANT_PORT, MerchantPort } from '../common/ports/merchant.port';
 import { UNIT_OF_WORK, UnitOfWork } from '../common/database/unit-of-work';
 

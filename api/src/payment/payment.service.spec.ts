@@ -9,15 +9,8 @@
  */
 
 import { TransactionContext, UnitOfWork } from '../common/database/unit-of-work';
-import {
-  NotificationPort,
-  NotificationRequest,
-} from '../common/ports/notification.port';
-import {
-  OrderCustomer,
-  OrderForSettlement,
-  OrderPort,
-} from '../common/ports/order.port';
+import { NotificationPort, NotificationRequest } from '../common/ports/notification.port';
+import { OrderCustomer, OrderForSettlement, OrderPort } from '../common/ports/order.port';
 
 import { PaymentRepository, TransactionRow } from './payment.repository';
 import { PaymentService, SettlementNotice } from './payment.service';
