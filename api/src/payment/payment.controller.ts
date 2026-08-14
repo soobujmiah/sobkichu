@@ -23,7 +23,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 
-import { Public } from '../identity/public.decorator';
+import { Public } from '../common/auth/public.decorator';
 
 import { AggregatorWebhookDto } from './dto/aggregator-webhook.dto';
 import { PaymentService } from './payment.service';

@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 
 import { AuthGuard, AuthenticatedRequest } from './auth.guard';
-import { issueSessionToken } from './domain/session-token';
+import { issueSessionToken } from './session-token';
 
 const SECRET = 'test-session-secret';
 const USER = '22222222-2222-4222-8222-000000000001';

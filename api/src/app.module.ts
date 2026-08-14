@@ -12,7 +12,7 @@ import { APP_GUARD } from '@nestjs/core';
 
 import { CatalogModule } from './catalog/catalog.module';
 import { DatabaseModule } from './common/database/database.module';
-import { AuthGuard } from './identity/auth.guard';
+import { AuthGuard } from './common/auth/auth.guard';
 import { IdentityModule } from './identity/identity.module';
 import { LocationModule } from './location/location.module';
 import { NotificationModule } from './notification/notification.module';

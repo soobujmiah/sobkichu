@@ -14,7 +14,7 @@ import { RateLimitDecision, RateLimiter } from '../common/rate-limit/rate-limite
 
 import { AuthService } from './auth.service';
 import { hashCode, OTP_TTL_SECONDS, OtpChallenge } from './domain/otp';
-import { verifySessionToken } from './domain/session-token';
+import { verifySessionToken } from '../common/auth/session-token';
 import { OtpStore } from './otp.store';
 import { UserRepository, UserRow } from './user.repository';
 
@@ -94,11 +94,13 @@ const config = () =>
     },
   }) as ConfigService;
 
-function harness(options: {
-  allow?: boolean;
-  existing?: OtpChallenge | null;
-  user?: UserRow | null;
-} = {}) {
+function harness(
+  options: {
+    allow?: boolean;
+    existing?: OtpChallenge | null;
+    user?: UserRow | null;
+  } = {},
+) {
   const limiter = new FakeLimiter(options.allow ?? true);
   const notifications = new RecordingNotifications();
   const store = new FakeOtpStore(options.existing ?? null);

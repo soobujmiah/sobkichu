@@ -22,7 +22,7 @@ import {
 } from '../common/rate-limit/rate-limiter';
 
 import { issueOtp, normaliseBdPhone, verifyOtp } from './domain/otp';
-import { issueSessionToken } from './domain/session-token';
+import { issueSessionToken } from '../common/auth/session-token';
 import { OtpStore } from './otp.store';
 import { UserRepository } from './user.repository';
 

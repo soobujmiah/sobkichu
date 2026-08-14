@@ -22,10 +22,7 @@ export interface ActiveRole {
 
 @Injectable()
 export class UserRepository {
-  async findByPhone(
-    tx: TransactionContext,
-    phoneE164: string,
-  ): Promise<UserRow | null> {
+  async findByPhone(tx: TransactionContext, phoneE164: string): Promise<UserRow | null> {
     const rows = await tx.query<UserRow>(
       'SELECT id, phone_e164, language_preference FROM app_user WHERE phone_e164 = $1',
       [phoneE164],
@@ -44,10 +41,7 @@ export class UserRepository {
    * New users default to Bangla (language_preference defaults to 'bn' in the
    * schema) -- Bangla-first is structural, not a setting to opt into.
    */
-  async findOrCreateByPhone(
-    tx: TransactionContext,
-    phoneE164: string,
-  ): Promise<string> {
+  async findOrCreateByPhone(tx: TransactionContext, phoneE164: string): Promise<string> {
     const rows = await tx.query<{ id: string }>(
       `INSERT INTO app_user (phone_e164)
        VALUES ($1)

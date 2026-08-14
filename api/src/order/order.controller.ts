@@ -8,8 +8,8 @@
 
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 
-import { AuthenticatedCaller } from '../identity/auth.guard';
-import { Caller } from '../identity/caller.decorator';
+import { AuthenticatedCaller } from '../common/auth/auth.guard';
+import { Caller } from '../common/auth/caller.decorator';
 
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreatedOrder, OrderService } from './order.service';

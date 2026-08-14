@@ -53,8 +53,7 @@ export interface IssuedOtp {
 }
 
 export type VerifyOutcome =
-  | { ok: true }
-  | { ok: false; reason: 'invalid' | 'expired' | 'too_many_attempts' };
+  { ok: true } | { ok: false; reason: 'invalid' | 'expired' | 'too_many_attempts' };
 
 /**
  * Generate a numeric code of OTP_LENGTH digits.

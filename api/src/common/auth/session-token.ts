@@ -14,6 +14,11 @@
  * Those are read from the database per request. A token minted before a
  * merchant's KYC was revoked must not keep asserting they are verified.
  *
+ * Lives in common/auth rather than identity/ because the guard, and the
+ * controllers it protects, are spread across every feature module. Putting
+ * it in identity/ made `order` and `payment` import from a sibling feature
+ * module, which the boundary rule correctly rejected.
+ *
  * Pure apart from node:crypto.
  */
 
