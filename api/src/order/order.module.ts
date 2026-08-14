@@ -11,14 +11,17 @@
 
 import { Module } from '@nestjs/common';
 
+import { CatalogModule } from '../catalog/catalog.module';
 import { DatabaseModule } from '../common/database/database.module';
+import { IdentityModule } from '../identity/identity.module';
+import { LocationModule } from '../location/location.module';
 
 import { OrderController } from './order.controller';
 import { OrderRepository } from './order.repository';
 import { OrderService } from './order.service';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, CatalogModule, LocationModule, IdentityModule],
   controllers: [OrderController],
   providers: [OrderService, OrderRepository],
   exports: [OrderService],

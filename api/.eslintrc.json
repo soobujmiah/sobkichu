@@ -68,5 +68,86 @@
         ]
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.module.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "../identity/*.service",
+                  "../identity/*.repository",
+                  "../identity/*.adapter",
+                  "../identity/*.controller",
+                  "../identity/domain/**",
+                  "../identity/dto/**",
+                  "../location/*.service",
+                  "../location/*.repository",
+                  "../location/*.adapter",
+                  "../location/*.controller",
+                  "../location/domain/**",
+                  "../location/dto/**",
+                  "../catalog/*.service",
+                  "../catalog/*.repository",
+                  "../catalog/*.adapter",
+                  "../catalog/*.controller",
+                  "../catalog/domain/**",
+                  "../catalog/dto/**",
+                  "../order/*.service",
+                  "../order/*.repository",
+                  "../order/*.adapter",
+                  "../order/*.controller",
+                  "../order/domain/**",
+                  "../order/dto/**",
+                  "../payment/*.service",
+                  "../payment/*.repository",
+                  "../payment/*.adapter",
+                  "../payment/*.controller",
+                  "../payment/domain/**",
+                  "../payment/dto/**",
+                  "../notification/*.service",
+                  "../notification/*.repository",
+                  "../notification/*.adapter",
+                  "../notification/*.controller",
+                  "../notification/domain/**",
+                  "../notification/dto/**",
+                  "../admin/*.service",
+                  "../admin/*.repository",
+                  "../admin/*.adapter",
+                  "../admin/*.controller",
+                  "../admin/domain/**",
+                  "../admin/dto/**",
+                  "../dispatch/*.service",
+                  "../dispatch/*.repository",
+                  "../dispatch/*.adapter",
+                  "../dispatch/*.controller",
+                  "../dispatch/domain/**",
+                  "../dispatch/dto/**",
+                  "../ledger/*.service",
+                  "../ledger/*.repository",
+                  "../ledger/*.adapter",
+                  "../ledger/*.controller",
+                  "../ledger/domain/**",
+                  "../ledger/dto/**",
+                  "../community/*.service",
+                  "../community/*.repository",
+                  "../community/*.adapter",
+                  "../community/*.controller",
+                  "../community/domain/**",
+                  "../community/dto/**"
+                ],
+                "message": "A module may import another module's *.module.ts for DI wiring, but not its services, repositories, adapters, controllers, domain or DTOs. Bind a port in src/common/ports/ instead."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

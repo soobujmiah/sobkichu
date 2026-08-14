@@ -9,10 +9,20 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
+import { CatalogModule } from './catalog/catalog.module';
 import { DatabaseModule } from './common/database/database.module';
+import { IdentityModule } from './identity/identity.module';
+import { LocationModule } from './location/location.module';
 import { OrderModule } from './order/order.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), DatabaseModule, OrderModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    DatabaseModule,
+    IdentityModule,
+    LocationModule,
+    CatalogModule,
+    OrderModule,
+  ],
 })
 export class AppModule {}

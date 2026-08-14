@@ -114,13 +114,19 @@ jobs:
           sudo apt-get install -y -qq postgresql-client
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f docs/data-model/phase-1-schema.sql
 
+      - name: Seed sample data
+        # The integration tests read the seeded Dhaka fixtures.
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f .devcontainer/seed.sql
+
       - name: Unit tests
         working-directory: api
-        run: npm test --if-present -- --ci
+        run: npm run test:unit -- --ci
 
-      - name: Integration tests
+      - name: Integration tests (real PostgreSQL + PostGIS)
+        # Exercises adapters, the transaction boundary and the schema CHECK
+        # constraints against a real database -- not fakes.
         working-directory: api
-        run: npm run test:e2e --if-present -- --ci
+        run: npm run test:int -- --ci --runInBand
 
       - name: Compliance regression tests
         # These encode legal obligations (docs/compliance/compliance-matrix.md).

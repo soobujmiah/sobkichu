@@ -13,7 +13,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:compliance": "jest --testPathPattern \"(advance-cap|delivery-clock|money)\\.spec\\.ts$\""
+    "test:compliance": "jest --testPathPattern \"(advance-cap|delivery-clock|money|order.service|order-creation)\"",
+    "test:unit": "jest --testPathIgnorePatterns \"int-spec\"",
+    "test:int": "jest --testPathPattern \"int-spec\""
   },
   "dependencies": {
     "@nestjs/common": "^11.2.0",
@@ -50,15 +52,15 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": ".",
+    "testRegex": ".*\\.(spec|int-spec)\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "src/**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
+    "coverageDirectory": "./coverage",
     "testEnvironment": "node"
   },
   "engines": {
