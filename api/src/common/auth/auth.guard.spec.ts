@@ -15,8 +15,18 @@ import { issueSessionToken } from './session-token';
 const SECRET = 'test-session-secret';
 const USER = '22222222-2222-4222-8222-000000000001';
 
-const config = (secret: string | undefined = SECRET) =>
+/**
+ * Config stub.
+ *
+ * Takes the secret explicitly rather than via a default parameter: a default
+ * fires on an explicit `undefined`, so `config(undefined)` handed back the
+ * real secret and the fail-closed test passed without ever exercising the
+ * unconfigured path.
+ */
+const config = (secret: string | undefined) =>
   ({ get: () => secret }) as unknown as ConfigService;
+
+const configuredConfig = () => config(SECRET);
 
 const reflector = (isPublic: boolean) =>
   ({ getAllAndOverride: () => isPublic }) as unknown as Reflector;
@@ -41,7 +51,7 @@ describe('AuthGuard', () => {
     const token = issueSessionToken(USER, 'role-1', SECRET);
     const { context, request } = contextWith({ authorization: `Bearer ${token}` });
 
-    const guard = new AuthGuard(config(), reflector(false));
+    const guard = new AuthGuard(configuredConfig(), reflector(false));
 
     expect(guard.canActivate(context)).toBe(true);
     expect(request.caller).toEqual({ userId: USER, activeRoleId: 'role-1' });
@@ -49,14 +59,14 @@ describe('AuthGuard', () => {
 
   it('rejects a request with no Authorization header', () => {
     const { context } = contextWith({});
-    const guard = new AuthGuard(config(), reflector(false));
+    const guard = new AuthGuard(configuredConfig(), reflector(false));
 
     expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
   });
 
   it('rejects a non-Bearer scheme', () => {
     const { context } = contextWith({ authorization: 'Basic dXNlcjpwYXNz' });
-    const guard = new AuthGuard(config(), reflector(false));
+    const guard = new AuthGuard(configuredConfig(), reflector(false));
 
     expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
   });
@@ -64,14 +74,14 @@ describe('AuthGuard', () => {
   it('rejects a token signed with another secret', () => {
     const token = issueSessionToken(USER, null, 'attacker-secret');
     const { context } = contextWith({ authorization: `Bearer ${token}` });
-    const guard = new AuthGuard(config(), reflector(false));
+    const guard = new AuthGuard(configuredConfig(), reflector(false));
 
     expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
   });
 
   it('gives the same message for forged and expired tokens', () => {
     // Distinguishing them tells an attacker which tokens are real.
-    const guard = new AuthGuard(config(), reflector(false));
+    const guard = new AuthGuard(configuredConfig(), reflector(false));
     const forged = contextWith({ authorization: 'Bearer forged.token' });
 
     let forgedMessage = '';
@@ -94,14 +104,14 @@ describe('AuthGuard', () => {
 
   it('allows a @Public() route through without a token', () => {
     const { context, request } = contextWith({});
-    const guard = new AuthGuard(config(), reflector(true));
+    const guard = new AuthGuard(configuredConfig(), reflector(true));
 
     expect(guard.canActivate(context)).toBe(true);
     expect(request.caller).toBeUndefined();
   });
 
   it('uses an i18n key for every failure message', () => {
-    const guard = new AuthGuard(config(), reflector(false));
+    const guard = new AuthGuard(configuredConfig(), reflector(false));
     const { context } = contextWith({});
 
     try {
