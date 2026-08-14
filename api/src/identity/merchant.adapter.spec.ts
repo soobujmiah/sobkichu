@@ -11,8 +11,7 @@ import { NotFoundException } from '@nestjs/common';
 
 import { MerchantAdapter } from './merchant.adapter';
 
-const pool = (rows: unknown[]) =>
-  ({ query: async () => ({ rows }) }) as never;
+const pool = (rows: unknown[]) => ({ query: async () => ({ rows }) }) as never;
 
 describe('MerchantAdapter', () => {
   describe('KYC translation (compliance K1)', () => {

@@ -38,9 +38,53 @@ jobs:
             echo "::notice::api/ not scaffolded yet — API CI is a no-op."
           fi
 
-  build:
-    name: Lint, typecheck, test
+  static:
+    name: Lint and typecheck
     needs: detect
+    if: needs.detect.outputs.exists == 'true'
+    # Deliberately has no database services: formatting and type errors
+    # should fail in seconds, not after a PostGIS container has booted.
+    # Four of the first CI failures on this repo were Prettier nits paid for
+    # at full pipeline cost.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect lockfile
+        id: lock
+        run: |
+          if [ -f api/package-lock.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: ${{ steps.lock.outputs.present == 'true' && 'npm' || '' }}
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: api
+        run: |
+          if [ "${{ steps.lock.outputs.present }}" = "true" ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Lint
+        working-directory: api
+        run: npm run lint
+
+      - name: Typecheck
+        working-directory: api
+        run: npx tsc --noEmit
+
+  build:
+    name: Test
+    needs: [detect, static]
     if: needs.detect.outputs.exists == 'true'
     runs-on: ubuntu-latest
 
@@ -99,14 +143,6 @@ jobs:
           else
             npm install --no-audit --no-fund
           fi
-
-      - name: Lint
-        working-directory: api
-        run: npm run lint --if-present
-
-      - name: Typecheck
-        working-directory: api
-        run: npx tsc --noEmit
 
       - name: Apply Phase 1 schema
         run: |
