@@ -16,6 +16,9 @@ import { DatabaseModule } from '../common/database/database.module';
 import { IdentityModule } from '../identity/identity.module';
 import { LocationModule } from '../location/location.module';
 
+import { ORDER_PORT } from '../common/ports/order.port';
+
+import { OrderAdapter } from './order.adapter';
 import { OrderController } from './order.controller';
 import { OrderRepository } from './order.repository';
 import { OrderService } from './order.service';
@@ -23,7 +26,12 @@ import { OrderService } from './order.service';
 @Module({
   imports: [DatabaseModule, CatalogModule, LocationModule, IdentityModule],
   controllers: [OrderController],
-  providers: [OrderService, OrderRepository],
-  exports: [OrderService],
+  providers: [
+    OrderService,
+    OrderRepository,
+    OrderAdapter,
+    { provide: ORDER_PORT, useExisting: OrderAdapter },
+  ],
+  exports: [OrderService, ORDER_PORT],
 })
 export class OrderModule {}

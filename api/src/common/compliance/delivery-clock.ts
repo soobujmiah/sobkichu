@@ -23,6 +23,12 @@
  *     deadline is stored as TIMESTAMPTZ so it stays correct regardless.
  *
  * Pure: no database, no framework, no I/O.
+ *
+ * Lives in common/compliance rather than in a feature module because BOTH
+ * `order` (to derive same-city at creation) and `payment` (to stamp the
+ * deadline when an advance settles) need it. A regulated rule with two
+ * callers must have exactly one implementation -- duplicating it per module
+ * is how the 5-day and 10-day windows drift apart.
  */
 
 /** DCOG 2021 delivery windows, in days from advance payment. */

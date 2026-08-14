@@ -38,7 +38,7 @@ import {
   computeAdvanceCap,
   CartLine,
 } from './domain/advance-cap';
-import { isSameCity } from './domain/delivery-clock';
+import { isSameCity } from '../common/compliance/delivery-clock';
 import { OrderRepository, NewOrderRecord } from './order.repository';
 
 export type PaymentMethod = 'bkash' | 'nagad' | 'cod' | 'escrow';

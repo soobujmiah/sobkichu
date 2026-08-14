@@ -14,13 +14,17 @@ The **create-order path runs against real PostgreSQL**, 84 tests green in CI (75
 | [`src/common/ports/`](src/common/ports/) | Catalog, Location, Merchant contracts — how `order` avoids touching other modules' tables |
 | [`src/common/database/unit-of-work.ts`](src/common/database/unit-of-work.ts) | The transaction boundary |
 | [`src/order/domain/advance-cap.ts`](src/order/domain/advance-cap.ts) | DCOG 2021 advance-payment cap (C1/C2/C3) |
-| [`src/order/domain/delivery-clock.ts`](src/order/domain/delivery-clock.ts) | DCOG 2021 delivery clock (C4/C5) |
+| [`src/common/compliance/delivery-clock.ts`](src/common/compliance/delivery-clock.ts) | DCOG 2021 delivery clock (C4/C5) — shared by `order` and `payment` |
 | [`src/order/order.service.ts`](src/order/order.service.ts) | Order creation — applies the rules, owns the transaction |
 | [`src/order/order.repository.ts`](src/order/order.repository.ts) | SQL for app_order, order_item, order_status_event |
+| [`src/payment/payment.service.ts`](src/payment/payment.service.ts) | Settlement webhook — idempotent, starts the delivery clock |
+| [`src/payment/webhook-signature.ts`](src/payment/webhook-signature.ts) | HMAC verification over the raw body |
 
 Adapters for all three ports are in place, so the path reads real listings, addresses and merchant KYC state.
 
-Not yet built: the payment aggregator integration and its webhook (so `stampDeliveryClock` has no caller yet — **no order currently gets a delivery deadline**), and the auth guard (the controller hardcodes a customer id with a `TODO(identity)`).
+The settlement webhook is in place, so orders now receive a regulated delivery deadline when an advance payment settles.
+
+Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), the notification module (push + mandatory SMS), and the auth guard (the controller hardcodes a customer id with a `TODO(identity)`).
 
 ## The transaction boundary
 

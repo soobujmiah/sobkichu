@@ -14,6 +14,7 @@ import { DatabaseModule } from './common/database/database.module';
 import { IdentityModule } from './identity/identity.module';
 import { LocationModule } from './location/location.module';
 import { OrderModule } from './order/order.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { OrderModule } from './order/order.module';
     LocationModule,
     CatalogModule,
     OrderModule,
+    PaymentModule,
   ],
 })
 export class AppModule {}
