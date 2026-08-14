@@ -6,7 +6,7 @@ Governed by [`MASTER_PROMPT.md`](../MASTER_PROMPT.md). Structure follows [backen
 
 ## Status
 
-The **create-order path runs against real PostgreSQL**, 84 tests green in CI (75 unit + 9 integration).
+The **full order lifecycle runs against real PostgreSQL** — create, pay, confirm, delivery clock. 101 tests green in CI (85 unit + 16 integration).
 
 | File | What it is |
 |---|---|
