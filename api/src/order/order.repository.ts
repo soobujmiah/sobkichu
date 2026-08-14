@@ -129,13 +129,7 @@ export class OrderRepository {
       `INSERT INTO order_status_event (
          order_id, from_status, to_status, actor_role_id, note_key
        ) VALUES ($1,$2,$3,$4,$5)`,
-      [
-        event.orderId,
-        event.fromStatus,
-        event.toStatus,
-        event.actorRoleId,
-        event.noteKey,
-      ],
+      [event.orderId, event.fromStatus, event.toStatus, event.actorRoleId, event.noteKey],
     );
 
     await tx.query(`UPDATE app_order SET status = $2, updated_at = now() WHERE id = $1`, [

@@ -30,11 +30,7 @@ const CUSTOMER = '22222222-2222-4222-8222-000000000001';
 const DHAKA_LOC = '11111111-1111-4111-8111-000000000001';
 const CTG_LOC = '11111111-1111-4111-8111-000000000006';
 
-const location = (
-  id: string,
-  division: string,
-  district: string,
-): ResolvedLocation => ({
+const location = (id: string, division: string, district: string): ResolvedLocation => ({
   id,
   division,
   district,
@@ -109,7 +105,6 @@ interface Harness {
 function harness(
   resolved: ResolvedCartLine[],
   merchant: Partial<MerchantSummary> = {},
-  deliveryLocationId = DHAKA_LOC,
 ): Harness {
   const catalog: CatalogPort = {
     resolveCartLines: async (lines: readonly RequestedCartLine[]) =>

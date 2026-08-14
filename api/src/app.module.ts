@@ -13,10 +13,6 @@ import { DatabaseModule } from './common/database/database.module';
 import { OrderModule } from './order/order.module';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    DatabaseModule,
-    OrderModule,
-  ],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), DatabaseModule, OrderModule],
 })
 export class AppModule {}
