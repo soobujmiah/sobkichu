@@ -6,7 +6,7 @@ Governed by [`MASTER_PROMPT.md`](../MASTER_PROMPT.md). Structure follows [backen
 
 ## Status
 
-The **full order lifecycle runs against real PostgreSQL** — create, pay, confirm, delivery clock, notify. 135 tests green in CI (119 unit + 16 integration).
+The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. 195 tests green in CI (179 unit + 16 integration).
 
 | File | What it is |
 |---|---|
@@ -20,6 +20,8 @@ The **full order lifecycle runs against real PostgreSQL** — create, pay, confi
 | [`src/payment/payment.service.ts`](src/payment/payment.service.ts) | Settlement webhook — idempotent, starts the delivery clock |
 | [`src/payment/webhook-signature.ts`](src/payment/webhook-signature.ts) | HMAC verification over the raw body |
 | [`src/notification/`](src/notification/) | Transactional outbox — mandatory SMS alongside push |
+| [`src/common/auth/`](src/common/auth/) | Session guard, tokens, `@Public()` / `@Caller()` |
+| [`src/identity/domain/otp.ts`](src/identity/domain/otp.ts) | Phone OTP issuance and verification |
 
 Adapters for all three ports are in place, so the path reads real listings, addresses and merchant KYC state.
 
@@ -27,7 +29,15 @@ The settlement webhook is in place, so orders now receive a regulated delivery d
 
 Notifications are queued transactionally and dispatched out of band, so SMS is guaranteed rather than hoped for.
 
-Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, and the auth guard (the controller hardcodes a customer id with a `TODO(identity)`).
+Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, and role switching (tokens carry an `activeRoleId` but nothing sets it yet).
+
+## Authentication
+
+Phone-based OTP — phone is the identifier in the BD context, not email. Numbers normalise to E.164 first, so `01712345678`, `8801712345678` and `+880 1712-345678` are one human rather than three accounts with three separate rate-limit buckets.
+
+The guard is registered **globally** via `APP_GUARD`, so a new endpoint is protected by default and `@Public()` is an explicit opt-out. The failure mode of opt-in auth is a forgotten decorator on an endpoint that moves money. Only the two login routes and the payment webhook are public, and the webhook authenticates by HMAC instead.
+
+Tokens are signed with `node:crypto` rather than a JWT library: the locked stack has no JWT dependency, adding one would be a deviation requiring an ADR, and one algorithm means no `alg: none` or algorithm-confusion surface. They carry only a user id and active role — KYC state is read per request, so a token minted before a merchant's KYC was revoked cannot keep asserting they are verified.
 
 ## Why notifications use an outbox
 
