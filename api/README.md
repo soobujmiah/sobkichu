@@ -6,7 +6,7 @@ Governed by [`MASTER_PROMPT.md`](../MASTER_PROMPT.md). Structure follows [backen
 
 ## Status
 
-The **create-order path works end to end**, 66 tests green in CI.
+The **create-order path runs against real PostgreSQL**, 84 tests green in CI (75 unit + 9 integration).
 
 | File | What it is |
 |---|---|
@@ -18,7 +18,9 @@ The **create-order path works end to end**, 66 tests green in CI.
 | [`src/order/order.service.ts`](src/order/order.service.ts) | Order creation — applies the rules, owns the transaction |
 | [`src/order/order.repository.ts`](src/order/order.repository.ts) | SQL for app_order, order_item, order_status_event |
 
-Not yet built: the catalog/location/identity adapters behind those ports, the payment aggregator integration and its webhook, and the auth guard (the controller currently hardcodes a customer id with a `TODO(identity)`).
+Adapters for all three ports are in place, so the path reads real listings, addresses and merchant KYC state.
+
+Not yet built: the payment aggregator integration and its webhook (so `stampDeliveryClock` has no caller yet — **no order currently gets a delivery deadline**), and the auth guard (the controller hardcodes a customer id with a `TODO(identity)`).
 
 ## The transaction boundary
 
@@ -30,7 +32,17 @@ Repository methods take a `TransactionContext`, never a pool connection. Writing
 
 `order` never reads the `listing`, `location` or `role` tables. It depends on interfaces in [`src/common/ports/`](src/common/ports/), so neither module imports the other and a later service extraction is a move rather than a rewrite ([ADR-0002](../docs/adr/0002-modular-monolith.md)).
 
-The practical payoff shows up in the tests: `order.service.spec.ts` runs 26 cases against in-memory fakes with **no database at all**.
+The practical payoff shows up in the tests: `order.service.spec.ts` runs 26 cases against in-memory fakes with **no database at all**, while [`test/order-creation.int-spec.ts`](test/order-creation.int-spec.ts) runs the same path against real PostgreSQL + PostGIS.
+
+## Test layers
+
+| Command | What it covers |
+|---|---|
+| `npm run test:unit` | Domain rules, service orchestration, adapter mapping — no database |
+| `npm run test:int` | The whole path against real PostgreSQL + PostGIS, including rollback behaviour |
+| `npm run test:compliance` | The subset encoding legal obligations |
+
+Integration tests skip themselves when `DATABASE_URL` is absent, so `npm test` stays runnable without a database. CI always provides one, and runs them `--runInBand` because they assert on row counts.
 
 ## Why this came first
 
