@@ -229,9 +229,7 @@ describe('PaymentService.applySettlement', () => {
         notice({ occurredAt: new Date('2026-09-01T06:30:00Z') }),
       );
 
-      expect(orders.clockStarts[0].paidAt.toISOString()).toBe(
-        '2026-09-01T06:30:00.000Z',
-      );
+      expect(orders.clockStarts[0].paidAt.toISOString()).toBe('2026-09-01T06:30:00.000Z');
       expect(orders.clockStarts[0].deadline.toISOString()).toBe(
         '2026-09-06T06:30:00.000Z',
       );
