@@ -26,3 +26,8 @@ Thumbs.db
 # Coverage / test
 coverage/
 *.lcov
+
+# API build output
+api/dist/
+api/coverage/
+api/.eslintcache

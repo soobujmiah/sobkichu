@@ -72,15 +72,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect lockfile
+        id: lock
+        run: |
+          if [ -f api/package-lock.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=No lockfile::api/package-lock.json is absent, so this run resolves dependencies fresh and is not reproducible. Commit a lockfile as soon as one is generated."
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
+          cache: ${{ steps.lock.outputs.present == 'true' && 'npm' || '' }}
           cache-dependency-path: api/package-lock.json
 
       - name: Install dependencies
         working-directory: api
-        run: npm ci --no-audit --no-fund
+        # npm ci requires a lockfile. Until one is committed, fall back to
+        # npm install so CI is useful from the first commit -- with the
+        # warning above making the reproducibility gap explicit.
+        run: |
+          if [ "${{ steps.lock.outputs.present }}" = "true" ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
 
       - name: Lint
         working-directory: api
@@ -107,5 +125,8 @@ jobs:
       - name: Compliance regression tests
         # These encode legal obligations (docs/compliance/compliance-matrix.md).
         # A failure here is a compliance regression, not a flaky test.
+        #
+        # Deliberately NOT --if-present: if the compliance script goes
+        # missing, that must break the build rather than quietly pass.
         working-directory: api
-        run: npm run test:compliance --if-present -- --ci
+        run: npm run test:compliance -- --ci

@@ -32,8 +32,17 @@ DART_DISPLAY = re.compile(
 )
 
 # NestJS user-facing exception messages.
+#
+# Scoped to HTTP exceptions (BadRequestException, NotFoundException, ...) --
+# those surface to the client and therefore need a translation key.
+#
+# Plain `throw new Error(...)` is deliberately NOT flagged: those are
+# developer-facing invariant violations (the equivalent of an assertion),
+# they never reach a user, and translating them would obscure debugging.
+# Domain errors that DO reach a user carry an explicit `messageKey` field --
+# see AdvanceCapExceededError in api/src/order/domain/advance-cap.ts.
 TS_EXCEPTION = re.compile(
-    r"""\bthrow\s+new\s+\w*(?:Exception|Error)\s*\(\s*(['"`])([^'"`\n]+?)\1"""
+    r"""\bthrow\s+new\s+\w*Exception\s*\(\s*(['"`])([^'"`\n]+?)\1"""
 )
 
 ALLOW_COMMENT = "i18n-ignore"

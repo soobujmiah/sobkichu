@@ -1,0 +1,24 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": { "project": "tsconfig.json", "sourceType": "module" },
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended"
+  ],
+  "root": true,
+  "env": { "node": true, "jest": true },
+  "ignorePatterns": [".eslintrc.json", "dist", "node_modules"],
+  "rules": {
+    "@typescript-eslint/interface-name-prefix": "off",
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@typescript-eslint/no-explicit-any": "error",
+    "no-restricted-imports": ["error", {
+      "patterns": [{
+        "group": ["../../*/", "!../../common/*"],
+        "message": "Cross-module imports are not allowed (docs/architecture/backend-modules.md boundary rule 1). Call the owning module's interface instead."
+      }]
+    }]
+  }
+}
