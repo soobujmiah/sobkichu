@@ -1,0 +1,32 @@
+{
+  "otp": {
+    "title": "Code",
+    "body": "Your code is {code}. Do not share it."
+  },
+  "order": {
+    "confirmed": {
+      "title": "Order placed",
+      "body": "Order {orderRef} received."
+    }
+  },
+  "payment": {
+    "received": {
+      "title": "Payment received",
+      "body": "Received {amount} BDT. Order {orderRef} confirmed."
+    },
+    "failed": {
+      "title": "Payment failed",
+      "body": "Payment for order {orderRef} failed."
+    }
+  },
+  "delivery": {
+    "out_for_delivery": {
+      "title": "On the way",
+      "body": "Order {orderRef} is on the way."
+    },
+    "delivered": {
+      "title": "Delivered",
+      "body": "Order {orderRef} delivered."
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "otp": {
+    "title": "কোড",
+    "body": "আপনার কোড {code}। কাউকে বলবেন না।"
+  },
+  "order": {
+    "confirmed": {
+      "title": "অর্ডার হয়েছে",
+      "body": "অর্ডার {orderRef} নেওয়া হয়েছে।"
+    }
+  },
+  "payment": {
+    "received": {
+      "title": "পেমেন্ট পেয়েছি",
+      "body": "{amount} টাকা পেয়েছি। অর্ডার {orderRef} নিশ্চিত।"
+    },
+    "failed": {
+      "title": "পেমেন্ট হয়নি",
+      "body": "অর্ডার {orderRef} এর পেমেন্ট হয়নি।"
+    }
+  },
+  "delivery": {
+    "out_for_delivery": {
+      "title": "পথে আছে",
+      "body": "অর্ডার {orderRef} পথে আছে।"
+    },
+    "delivered": {
+      "title": "পৌঁছেছে",
+      "body": "অর্ডার {orderRef} পৌঁছে গেছে।"
+    }
+  }
+}

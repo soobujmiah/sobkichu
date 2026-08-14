@@ -25,8 +25,16 @@
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
-import { takaToPoisha } from '../common/money';
-import { UNIT_OF_WORK, UnitOfWork } from '../common/database/unit-of-work';
+import { poishaToTaka, takaToPoisha } from '../common/money';
+import {
+  TransactionContext,
+  UNIT_OF_WORK,
+  UnitOfWork,
+} from '../common/database/unit-of-work';
+import {
+  NOTIFICATION_PORT,
+  NotificationPort,
+} from '../common/ports/notification.port';
 import { ORDER_PORT, OrderPort } from '../common/ports/order.port';
 import { computeDeliveryDeadline } from '../common/compliance/delivery-clock';
 
@@ -44,6 +52,8 @@ export interface SettlementNotice {
   readonly occurredAt: Date;
 }
 
+type CustomerEvent = 'payment_received' | 'payment_failed';
+
 export type SettlementResult =
   | { status: 'applied'; orderId: string; deliveryDeadlineAt: Date | null }
   | { status: 'duplicate'; orderId: string }
@@ -56,6 +66,7 @@ export class PaymentService {
   constructor(
     @Inject(UNIT_OF_WORK) private readonly uow: UnitOfWork,
     @Inject(ORDER_PORT) private readonly orders: OrderPort,
+    @Inject(NOTIFICATION_PORT) private readonly notifications: NotificationPort,
     private readonly payments: PaymentRepository,
   ) {}
 
@@ -113,6 +124,7 @@ export class PaymentService {
           'awaiting_payment',
           'order.event.payment_failed',
         );
+        await this.notifyCustomer(tx, notice, 'payment_failed');
         return { status: 'applied', orderId: notice.orderId, deliveryDeadlineAt: null };
       }
 
@@ -131,6 +143,10 @@ export class PaymentService {
         'confirmed',
         'order.event.payment_received',
       );
+
+      // Queued INSIDE the transaction (Section 8): if the settlement rolls
+      // back, so does the promise that we received the money.
+      await this.notifyCustomer(tx, notice, 'payment_received');
 
       // --- the delivery clock (compliance C4) ----------------------------
       // Only an ADVANCE payment starts it. A COD transaction settling on
@@ -167,6 +183,36 @@ export class PaymentService {
         orderId: notice.orderId,
         deliveryDeadlineAt: deadline.deadlineAt,
       };
+    });
+  }
+
+  /**
+   * Queue the customer notification for a settlement outcome.
+   *
+   * SMS is mandatory for both outcomes (Section 8); the channel policy in
+   * the notification module decides that, not this call site.
+   */
+  private async notifyCustomer(
+    tx: TransactionContext,
+    notice: SettlementNotice,
+    event: CustomerEvent,
+  ): Promise<void> {
+    const customer = await this.orders.findCustomer(tx, notice.orderId);
+    if (!customer) {
+      return;
+    }
+
+    await this.notifications.enqueue(tx, {
+      userId: customer.customerUserId,
+      event,
+      params: {
+        orderRef: notice.orderId.slice(0, 8),
+        amount: poishaToTaka(notice.amount),
+      },
+      orderId: notice.orderId,
+      // Derived from the aggregator reference, not the clock, so a replayed
+      // webhook maps to the same key and cannot produce a second SMS.
+      dedupeKey: `settle:${notice.aggregator}:${notice.aggregatorRef}:${event}`,
     });
   }
 }

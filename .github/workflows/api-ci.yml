@@ -144,11 +144,15 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
-      - name: Apply Phase 1 schema
+      - name: Apply Phase 1 schema and migrations
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f docs/data-model/phase-1-schema.sql
+          for m in docs/data-model/migrations/*.sql; do
+            echo "applying $m"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$m"
+          done
 
       - name: Seed sample data
         # The integration tests read the seeded Dhaka fixtures.

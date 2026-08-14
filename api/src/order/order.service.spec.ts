@@ -20,6 +20,10 @@ import {
 } from '../common/ports/catalog.port';
 import { LocationPort, ResolvedLocation } from '../common/ports/location.port';
 import { MerchantPort, MerchantSummary } from '../common/ports/merchant.port';
+import {
+  NotificationPort,
+  NotificationRequest,
+} from '../common/ports/notification.port';
 import { TransactionContext, UnitOfWork } from '../common/database/unit-of-work';
 
 import { OrderService } from './order.service';
@@ -96,10 +100,19 @@ class FakeUnitOfWork implements UnitOfWork {
   }
 }
 
+class RecordingNotifications implements NotificationPort {
+  queued: NotificationRequest[] = [];
+
+  async enqueue(_tx: TransactionContext, request: NotificationRequest) {
+    this.queued.push(request);
+  }
+}
+
 interface Harness {
   service: OrderService;
   repo: RecordingRepository;
   uow: FakeUnitOfWork;
+  notifications: RecordingNotifications;
 }
 
 function harness(
@@ -133,9 +146,17 @@ function harness(
 
   const repo = new RecordingRepository();
   const uow = new FakeUnitOfWork();
-  const service = new OrderService(catalog, locations, merchants, uow, repo);
+  const notifications = new RecordingNotifications();
+  const service = new OrderService(
+    catalog,
+    locations,
+    merchants,
+    uow,
+    notifications,
+    repo,
+  );
 
-  return { service, repo, uow };
+  return { service, repo, uow, notifications };
 }
 
 const command = (overrides: Record<string, unknown> = {}) => ({
@@ -265,6 +286,18 @@ describe('OrderService.createOrder', () => {
         'recordStatusEvent',
         'insertPendingTransaction',
       ]);
+    });
+
+    it('queues the confirmation notification inside the same transaction', async () => {
+      // A rolled-back order must not leave an SMS telling the buyer it was
+      // placed (master prompt Section 8).
+      const { service, notifications } = harness([listing('l1', '180.00', true)]);
+
+      await service.createOrder(command());
+
+      expect(notifications.queued).toHaveLength(1);
+      expect(notifications.queued[0].event).toBe('order_confirmed');
+      expect(notifications.queued[0].dedupeKey).toBe('order-created:order-1');
     });
   });
 

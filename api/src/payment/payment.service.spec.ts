@@ -9,7 +9,15 @@
  */
 
 import { TransactionContext, UnitOfWork } from '../common/database/unit-of-work';
-import { OrderForSettlement, OrderPort } from '../common/ports/order.port';
+import {
+  NotificationPort,
+  NotificationRequest,
+} from '../common/ports/notification.port';
+import {
+  OrderCustomer,
+  OrderForSettlement,
+  OrderPort,
+} from '../common/ports/order.port';
 
 import { PaymentRepository, TransactionRow } from './payment.repository';
 import { PaymentService, SettlementNotice } from './payment.service';
@@ -53,6 +61,10 @@ class FakeOrderPort implements OrderPort {
 
   async findForSettlement() {
     return this.order;
+  }
+
+  async findCustomer(): Promise<OrderCustomer | null> {
+    return this.order ? { customerUserId: 'customer-1' } : null;
   }
 
   async transitionStatus(
@@ -108,6 +120,14 @@ class FakePaymentRepository extends PaymentRepository {
   }
 }
 
+class RecordingNotifications implements NotificationPort {
+  queued: NotificationRequest[] = [];
+
+  async enqueue(_tx: TransactionContext, request: NotificationRequest) {
+    this.queued.push(request);
+  }
+}
+
 const notice = (overrides: Partial<SettlementNotice> = {}): SettlementNotice => ({
   orderId: ORDER_ID,
   aggregator: 'sslcommerz',
@@ -133,7 +153,14 @@ function harness(options: {
       : options.order,
   );
   const uow = new FakeUnitOfWork();
-  return { service: new PaymentService(uow, orders, repo), repo, orders, uow };
+  const notifications = new RecordingNotifications();
+  return {
+    service: new PaymentService(uow, orders, notifications, repo),
+    repo,
+    orders,
+    uow,
+    notifications,
+  };
 }
 
 describe('PaymentService.applySettlement', () => {
@@ -303,6 +330,56 @@ describe('PaymentService.applySettlement', () => {
       for (const transition of orders.transitions) {
         expect(transition.noteKey).toMatch(/^[a-z0-9_]+(\.[a-z0-9_]+)+$/);
       }
+    });
+  });
+
+  describe('notifications (Section 8: SMS is mandatory)', () => {
+    it('queues a payment_received notification on settlement', async () => {
+      const { service, notifications } = harness({});
+
+      await service.applySettlement(notice());
+
+      expect(notifications.queued).toHaveLength(1);
+      expect(notifications.queued[0].event).toBe('payment_received');
+      expect(notifications.queued[0].params.amount).toBe('420.00');
+    });
+
+    it('queues a payment_failed notification on failure', async () => {
+      const { service, notifications } = harness({});
+
+      await service.applySettlement(notice({ outcome: 'failed' }));
+
+      expect(notifications.queued[0].event).toBe('payment_failed');
+    });
+
+    it('derives the dedupe key from the aggregator ref, not the clock', async () => {
+      // A replayed webhook must map to the same key so the outbox UNIQUE
+      // constraint collapses it into one notification.
+      const { service, notifications } = harness({});
+
+      await service.applySettlement(notice({ aggregatorRef: 'REF-XYZ' }));
+
+      expect(notifications.queued[0].dedupeKey).toBe(
+        'settle:sslcommerz:REF-XYZ:payment_received',
+      );
+    });
+
+    it('queues NOTHING for a duplicate webhook', async () => {
+      const { service, notifications } = harness({
+        byRef: txRow({ status: 'settled', aggregator_ref: 'REF-1' }),
+      });
+
+      await service.applySettlement(notice());
+
+      expect(notifications.queued).toEqual([]);
+    });
+
+    it('queues nothing when the settlement is rejected', async () => {
+      const { service, notifications } = harness({});
+
+      await service.applySettlement(notice({ amount: 999999 }));
+
+      expect(notifications.queued).toEqual([]);
     });
   });
 

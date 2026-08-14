@@ -28,7 +28,14 @@ export interface OrderForSettlement {
   readonly status: string;
 }
 
+export interface OrderCustomer {
+  readonly customerUserId: string;
+}
+
 export interface OrderPort {
+  /** Who to notify about this order. */
+  findCustomer(tx: TransactionContext, orderId: string): Promise<OrderCustomer | null>;
+
   /** Read the order facts needed to settle a payment against it. */
   findForSettlement(
     tx: TransactionContext,

@@ -28,6 +28,10 @@ import {
   ResolvedCartLine,
 } from '../common/ports/catalog.port';
 import { LOCATION_PORT, LocationPort } from '../common/ports/location.port';
+import {
+  NOTIFICATION_PORT,
+  NotificationPort,
+} from '../common/ports/notification.port';
 import { MERCHANT_PORT, MerchantPort } from '../common/ports/merchant.port';
 import { UNIT_OF_WORK, UnitOfWork } from '../common/database/unit-of-work';
 
@@ -76,6 +80,7 @@ export class OrderService {
     @Inject(LOCATION_PORT) private readonly locations: LocationPort,
     @Inject(MERCHANT_PORT) private readonly merchants: MerchantPort,
     @Inject(UNIT_OF_WORK) private readonly uow: UnitOfWork,
+    @Inject(NOTIFICATION_PORT) private readonly notifications: NotificationPort,
     private readonly orders: OrderRepository,
   ) {}
 
@@ -185,6 +190,17 @@ export class OrderService {
         ),
         isAdvance: command.paymentMethod !== 'cod',
       });
+
+      // Queued in the same transaction as the order: a rolled-back order
+      // must not leave behind an SMS telling the buyer it was placed.
+      await this.notifications.enqueue(tx, {
+        userId: command.customerUserId,
+        event: 'order_confirmed',
+        params: { orderRef: id.slice(0, 8) },
+        orderId: id,
+        dedupeKey: `order-created:${id}`,
+      });
+
       return id;
     });
 

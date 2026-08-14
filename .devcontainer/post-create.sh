@@ -30,6 +30,13 @@ else
   echo "    Schema applied."
 fi
 
+# Migrations are forward-only and individually idempotent.
+for migration in docs/data-model/migrations/*.sql; do
+  [ -e "$migration" ] || continue
+  echo "==> Applying $migration"
+  psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$migration" || true
+done
+
 # --- seed Dhaka sample data --------------------------------------------------
 if [ -f .devcontainer/seed.sql ]; then
   echo "==> Seeding Dhaka sample data"

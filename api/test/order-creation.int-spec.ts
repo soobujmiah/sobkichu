@@ -21,6 +21,8 @@ import { CatalogAdapter } from '../src/catalog/catalog.adapter';
 import { CatalogRepository } from '../src/catalog/catalog.repository';
 import { LocationAdapter } from '../src/location/location.adapter';
 import { MerchantAdapter } from '../src/identity/merchant.adapter';
+import { NotificationAdapter } from '../src/notification/notification.adapter';
+import { NotificationRepository } from '../src/notification/notification.repository';
 import { OrderRepository } from '../src/order/order.repository';
 import { OrderService } from '../src/order/order.service';
 
@@ -51,6 +53,7 @@ describeIfDb('order creation against real PostgreSQL', () => {
       new LocationAdapter(pool),
       new MerchantAdapter(pool),
       uow,
+      new NotificationAdapter(pool, new NotificationRepository()),
       new OrderRepository(),
     );
 
@@ -70,6 +73,9 @@ describeIfDb('order creation against real PostgreSQL', () => {
 
   /** Remove orders created by a test so reruns stay deterministic. */
   async function cleanup(orderId: string) {
+    // Outbox rows first: dedupe_key is UNIQUE, so leftovers would make a
+    // rerun of the same test silently skip its notification.
+    await pool.query('DELETE FROM notification_outbox WHERE order_id = $1', [orderId]);
     await pool.query('DELETE FROM transaction WHERE order_id = $1', [orderId]);
     await pool.query('DELETE FROM order_status_event WHERE order_id = $1', [orderId]);
     await pool.query('DELETE FROM order_item WHERE order_id = $1', [orderId]);

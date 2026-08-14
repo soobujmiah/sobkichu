@@ -15,12 +15,14 @@ on:
     branches: [main]
     paths:
       - 'docs/data-model/phase-1-schema.sql'
+      - 'docs/data-model/migrations/*.sql'
       - '.devcontainer/seed.sql'
       - 'tools/schema_assertions.sql'
       - '.github/workflows/schema-ci.yml'
   pull_request:
     paths:
       - 'docs/data-model/phase-1-schema.sql'
+      - 'docs/data-model/migrations/*.sql'
       - '.devcontainer/seed.sql'
       - 'tools/schema_assertions.sql'
       - '.github/workflows/schema-ci.yml'
@@ -61,6 +63,13 @@ jobs:
 
       - name: Apply Phase 1 schema
         run: psql -v ON_ERROR_STOP=1 -q -f docs/data-model/phase-1-schema.sql
+
+      - name: Apply migrations
+        run: |
+          for m in docs/data-model/migrations/*.sql; do
+            echo "applying $m"
+            psql -v ON_ERROR_STOP=1 -q -f "$m"
+          done
 
       - name: Verify PostGIS is available
         # The 1-10km radius discovery search depends on it; a Postgres image

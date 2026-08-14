@@ -13,6 +13,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { DatabaseModule } from './common/database/database.module';
 import { IdentityModule } from './identity/identity.module';
 import { LocationModule } from './location/location.module';
+import { NotificationModule } from './notification/notification.module';
 import { OrderModule } from './order/order.module';
 import { PaymentModule } from './payment/payment.module';
 
@@ -20,6 +21,7 @@ import { PaymentModule } from './payment/payment.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
+    NotificationModule,
     IdentityModule,
     LocationModule,
     CatalogModule,

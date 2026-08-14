@@ -9,7 +9,11 @@
 import { Injectable } from '@nestjs/common';
 
 import { TransactionContext } from '../common/database/unit-of-work';
-import { OrderForSettlement, OrderPort } from '../common/ports/order.port';
+import {
+  OrderCustomer,
+  OrderForSettlement,
+  OrderPort,
+} from '../common/ports/order.port';
 
 import { OrderRepository, OrderStatus } from './order.repository';
 
@@ -46,6 +50,18 @@ export class OrderAdapter implements OrderPort {
       advancePaidAt: row.advance_paid_at,
       status: row.status,
     };
+  }
+
+  async findCustomer(
+    tx: TransactionContext,
+    orderId: string,
+  ): Promise<OrderCustomer | null> {
+    const rows = await tx.query<{ customer_user_id: string }>(
+      'SELECT customer_user_id FROM app_order WHERE id = $1',
+      [orderId],
+    );
+
+    return rows[0] ? { customerUserId: rows[0].customer_user_id } : null;
   }
 
   async transitionStatus(
