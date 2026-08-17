@@ -16,11 +16,12 @@ import { AuthService } from './auth.service';
 import { hashCode, OTP_TTL_SECONDS, OtpChallenge } from './domain/otp';
 import { verifySessionToken } from '../common/auth/session-token';
 import { OtpStore } from './otp.store';
-import { UserRepository, UserRow } from './user.repository';
+import { ActiveRole, UserRepository, UserRow } from './user.repository';
 
 const OTP_SECRET = 'otp-secret';
 const SESSION_SECRET = 'session-secret';
 const USER_ID = '22222222-2222-4222-8222-000000000001';
+const MERCHANT_ROLE_ID = '33333333-3333-4333-8333-000000000003';
 
 class FakeUow implements UnitOfWork {
   async withTransaction<T>(work: (tx: TransactionContext) => Promise<T>): Promise<T> {
@@ -46,7 +47,10 @@ class RecordingNotifications implements NotificationPort {
 }
 
 class FakeUsers extends UserRepository {
-  constructor(private readonly user: UserRow | null = null) {
+  constructor(
+    private readonly user: UserRow | null = null,
+    private readonly roles: ActiveRole[] = [],
+  ) {
     super();
   }
 
@@ -56,6 +60,10 @@ class FakeUsers extends UserRepository {
 
   override async findOrCreateByPhone() {
     return USER_ID;
+  }
+
+  override async findRoles() {
+    return this.roles;
   }
 }
 
@@ -99,6 +107,7 @@ function harness(
     allow?: boolean;
     existing?: OtpChallenge | null;
     user?: UserRow | null;
+    roles?: ActiveRole[];
   } = {},
 ) {
   const limiter = new FakeLimiter(options.allow ?? true);
@@ -108,6 +117,7 @@ function harness(
     options.user === undefined
       ? { id: USER_ID, phone_e164: '+8801712345678', language_preference: 'bn' }
       : options.user,
+    options.roles ?? [],
   );
 
   const service = new AuthService(
@@ -249,5 +259,68 @@ describe('AuthService.verifyOtp', () => {
     // Reported as invalid rather than a distinct error: saying "correct code,
     // no user" confirms the code was right.
     expect(result).toEqual({ status: 'rejected', reason: 'invalid' });
+  });
+});
+
+describe('AuthService.switchRole', () => {
+  const merchantRole: ActiveRole = {
+    id: MERCHANT_ROLE_ID,
+    type: 'merchant',
+    kycVerified: false,
+  };
+
+  it('re-issues the token with the role set as active', async () => {
+    const { service } = harness({ roles: [merchantRole] });
+
+    const result = await service.switchRole(USER_ID, MERCHANT_ROLE_ID);
+
+    expect(result.status).toBe('switched');
+    if (result.status === 'switched') {
+      expect(result.roleType).toBe('merchant');
+      const verified = verifySessionToken(result.token, SESSION_SECRET);
+      expect(verified.valid && verified.payload.activeRoleId).toBe(MERCHANT_ROLE_ID);
+      expect(verified.valid && verified.payload.sub).toBe(USER_ID);
+    }
+  });
+
+  it('does not require KYC to be verified -- that gate applies per action', async () => {
+    // kycVerified: false above, and the switch still succeeds. Publishing or
+    // transacting under the role is what CatalogService/OrderService gate.
+    const { service } = harness({ roles: [merchantRole] });
+
+    const result = await service.switchRole(USER_ID, MERCHANT_ROLE_ID);
+
+    expect(result.status).toBe('switched');
+  });
+
+  it('rejects a role id the caller does not hold', async () => {
+    const { service } = harness({ roles: [merchantRole] });
+
+    const result = await service.switchRole(USER_ID, 'unknown-role-id');
+
+    expect(result).toEqual({ status: 'role_not_found' });
+  });
+
+  it('rejects when the caller has no roles at all', async () => {
+    const { service } = harness({ roles: [] });
+
+    const result = await service.switchRole(USER_ID, MERCHANT_ROLE_ID);
+
+    expect(result).toEqual({ status: 'role_not_found' });
+  });
+});
+
+describe('AuthService.listRoles', () => {
+  it("returns the caller's roles", async () => {
+    const merchantRole: ActiveRole = {
+      id: MERCHANT_ROLE_ID,
+      type: 'merchant',
+      kycVerified: true,
+    };
+    const { service } = harness({ roles: [merchantRole] });
+
+    const roles = await service.listRoles(USER_ID);
+
+    expect(roles).toEqual([merchantRole]);
   });
 });

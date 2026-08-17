@@ -6,7 +6,7 @@
  * +880 1712-345678, and all three are the same person.
  */
 
-import { IsString, Length, Matches } from 'class-validator';
+import { IsString, IsUUID, Length, Matches } from 'class-validator';
 
 export class RequestOtpDto {
   @IsString()
@@ -22,4 +22,9 @@ export class VerifyOtpDto {
   @IsString()
   @Matches(/^\d{6}$/, { message: 'error.auth.code_must_be_six_digits' })
   code!: string;
+}
+
+export class SwitchRoleDto {
+  @IsUUID()
+  roleId!: string;
 }

@@ -6,13 +6,12 @@ Read this first, every session. Governed by [`MASTER_PROMPT.md`](MASTER_PROMPT.m
 
 **Phase 1 (MVP), backend in progress.** Full documentation set, dev environment, and CI have been in place since the initial commits. The NestJS API is now real code with a working vertical slice — not just scaffolding. The Flutter mobile app (`mobile/`) does not exist yet.
 
-Root `README.md`'s "Status" line and CI table still say "pre-code" / "api-ci skips until `api/`" — that's now stale text, not current fact. `api-ci` self-detects `api/package.json` and has been running for real since the first `api/` commit. Fix the README wording next time it's touched; not urgent enough to justify a docs-only PR on its own.
-
 ## What's built (api/)
 
-The order lifecycle runs end-to-end against real PostgreSQL: **authenticate → create order → pay (settlement webhook) → confirm → delivery clock starts → notify.** 195 tests green in CI (179 unit + 16 integration) as of the last commit.
+The order lifecycle runs end-to-end against real PostgreSQL: **authenticate → switch into a role → create order → pay (settlement webhook) → confirm → delivery clock starts → notify.** A merchant can also **publish a listing**, gated on the same KYC check. 210 tests green in CI (194 unit + 16 integration) as of the last commit.
 
-- **Identity**: phone OTP auth (E.164 normalized), global `APP_GUARD`, `@Public()` opt-out, Redis rate limiting, session tokens signed with `node:crypto` (no JWT lib — deliberate, stack-locked)
+- **Identity**: phone OTP auth (E.164 normalized), role switching (`POST /auth/roles/switch` re-issues the token with a new `activeRoleId`, checked against roles the caller actually holds), global `APP_GUARD`, `@Public()` opt-out, Redis rate limiting, session tokens signed with `node:crypto` (no JWT lib — deliberate, stack-locked)
+- **Catalog**: listing creation (`POST /catalog/listings`) — merchant KYC gate (K1), prohibited/DGDA category gates (C8/C9), owner and pickup location resolved server-side from the caller's active role, never from the request body
 - **Order**: create-order path, advance-payment cap (DCOG 2021, `src/order/domain/advance-cap.ts`), transaction boundary via `UnitOfWork` (`AsyncLocalStorage`-joined, not nested)
 - **Payment**: settlement webhook, HMAC-verified, idempotent, starts the delivery clock
 - **Notification**: transactional outbox — SMS is guaranteed-delivery alongside push, not best-effort
@@ -26,13 +25,18 @@ Full narrative and rationale: [`api/README.md`](api/README.md).
 - Outbound aggregator calls to *initiate* payment (currently only receives settlement notices)
 - Real SMS/FCM provider wiring (gateways log at WARN when unconfigured — intentional, so a misconfigured deploy is loud)
 - A scheduler to actually run the notification dispatcher
-- Role switching (`activeRoleId` exists on the token; nothing sets it yet)
-- Catalog/listing write paths, merchant onboarding + NID KYC flow, GPS radius discovery, offline cart sync, Central Admin Panel, accessibility pass — i.e. most of the Phase 1 DoD checklist in [`docs/roadmap.md`](docs/roadmap.md)
+- Merchant onboarding — nothing creates a `role` row of type `merchant` for a user yet, so `POST /auth/roles/switch` only works for a role seeded some other way (devcontainer seed data). This is the actual blocker on exercising listing creation outside of tests, not role switching (which is now built).
+- Merchant NID KYC submission flow (the `role.kyc_status` column and the K1 gate exist; nothing sets `kyc_status` to `verified`)
+- Listing read/update paths (creation only — no edit, no list-my-listings, no deactivate)
+- GPS radius discovery, offline cart sync, Central Admin Panel, accessibility pass — most of the rest of the Phase 1 DoD checklist in [`docs/roadmap.md`](docs/roadmap.md)
 - `mobile/` (Flutter) — nothing scaffolded yet
-- `api/package-lock.json` — not committed. CI falls back to `npm install` and prints a reproducibility warning on every run. Generate and commit one on the next `api/` PR.
+- `api/package-lock.json` — not committed. CI falls back to `npm install` and prints a reproducibility warning on every run. Generate and commit one on the next `api/` PR (needs `npm install` in Codespaces/CI — do not run it locally, per `CONTRIBUTING.md` §"For AI assistants").
 
 ## Recent changes (most recent first)
 
+- `feat(identity)`: role switching — `POST /auth/roles/switch`, `GET /auth/roles`
+- `feat(catalog)`: listing creation, gated on merchant KYC and category rules
+- `docs`: land CURRENT_STATE.md, point roadmap at it, fix stale README status
 - `docs(api)`: 195 tests, authentication documented
 - `fix(auth)`: fail-closed test was vacuous — fixed
 - `refactor(auth)`: auth primitives moved to `common/`, Prettier fixed
@@ -45,16 +49,15 @@ Full narrative and rationale: [`api/README.md`](api/README.md).
 - `ci`: devcontainer, CI workflows, executable compliance checks
 - `docs`: full documentation set — architecture, data model, compliance, UX, workflow, ADRs
 
-Full history: `git log` on `main` (all commits currently on `main`, no open feature branches).
+Full history: `git log` on `main`.
 
 ## Next immediate steps
 
-1. Wire a real aggregator client to *initiate* payment (SSLCommerz/ShurjoPay/bKash-Nagad direct — see ADR-0004), not just receive settlement webhooks
-2. Scaffold `catalog` module's write path (listing creation, `ready_to_ship` flag) — merchant mode needs this before anything else in the roadmap DoD
-3. Merchant NID KYC flow
+1. Merchant onboarding: an endpoint that creates a `role` row of type `merchant` for the caller (business profile fields into `role.profile` JSONB) — this is what actually unblocks exercising listing creation end-to-end, now that role switching exists
+2. Merchant NID KYC submission flow — sets `role.kyc_status`; needs a decision on document upload (S3-compatible storage is locked-stack but not wired up anywhere yet)
+3. Wire a real aggregator client to *initiate* payment (SSLCommerz/ShurjoPay/bKash-Nagad direct — see ADR-0004), not just receive settlement webhooks
 4. Generate and commit `api/package-lock.json`
-5. Update root `README.md` Status section and CI table (stale "pre-code" wording)
-6. First Flutter scaffold in `mobile/`, once there's enough API surface to bind a screen to
+5. First Flutter scaffold in `mobile/`, once there's enough API surface to bind a screen to
 
 ## Known blockers / open questions
 
