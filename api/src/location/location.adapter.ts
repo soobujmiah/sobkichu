@@ -21,6 +21,8 @@ interface LocationRow {
   village_mohalla: string | null;
   address_line: string | null;
   has_geo: boolean;
+  lat: number | null;
+  lng: number | null;
 }
 
 @Injectable()
@@ -31,7 +33,9 @@ export class LocationAdapter implements LocationPort {
     const result = await this.pool.query<LocationRow>(
       `SELECT id, division, district, upazila_thana, union_ward,
               village_mohalla, address_line,
-              (geo IS NOT NULL) AS has_geo
+              (geo IS NOT NULL) AS has_geo,
+              ST_Y(geo::geometry) AS lat,
+              ST_X(geo::geometry) AS lng
          FROM location
         WHERE id = $1`,
       [locationId],
@@ -51,10 +55,12 @@ export class LocationAdapter implements LocationPort {
       unionWard: row.union_ward,
       villageMohalla: row.village_mohalla,
       addressLine: row.address_line,
-      // Deliberately exposed as a boolean, not coordinates: a null geo is a
-      // manual-address location, which is a first-class path and not a
-      // degraded one (docs/localization/bangladesh-localization.md).
+      // A null geo is a manual-address location, first-class and not
+      // degraded (docs/localization/bangladesh-localization.md) -- hasGeo
+      // stays the primary signal, lat/lng are both null alongside it.
       hasGeo: row.has_geo,
+      lat: row.lat,
+      lng: row.lng,
     };
   }
 }
