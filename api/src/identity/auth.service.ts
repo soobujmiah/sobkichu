@@ -24,7 +24,7 @@ import {
 import { issueOtp, normaliseBdPhone, verifyOtp } from './domain/otp';
 import { issueSessionToken } from '../common/auth/session-token';
 import { OtpStore } from './otp.store';
-import { UserRepository } from './user.repository';
+import { ActiveRole, UserRepository } from './user.repository';
 
 export type RequestOtpResult =
   | { status: 'sent'; retryAfterSeconds: number }
@@ -36,6 +36,12 @@ export type VerifyOtpResult =
   | { status: 'rejected'; reason: 'invalid' | 'expired' | 'too_many_attempts' }
   | { status: 'invalid_phone' }
   | { status: 'rate_limited'; retryAfterSeconds: number };
+
+export type SwitchRoleResult =
+  | { status: 'switched'; token: string; roleType: string }
+  /** Covers "doesn't exist", "belongs to another user" and "inactive" alike
+   *  -- distinguishing them would tell a caller which role ids exist. */
+  | { status: 'role_not_found' };
 
 @Injectable()
 export class AuthService {
@@ -153,6 +159,39 @@ export class AuthService {
     const token = issueSessionToken(user.id, null, this.sessionSecret());
 
     return { status: 'authenticated', token, userId: user.id };
+  }
+
+  /** Roles the caller can switch into -- for a client-side role switcher. */
+  async listRoles(userId: string): Promise<ActiveRole[]> {
+    return this.uow.withTransaction((tx) => this.users.findRoles(tx, userId));
+  }
+
+  /**
+   * Re-issue the session token with a different active role.
+   *
+   * The role must belong to the caller and be active -- `findRoles` already
+   * filters on both (WHERE user_id = $1 AND is_active), so anything not in
+   * that list is treated as not found, deliberately not distinguished from
+   * "doesn't exist" (see SwitchRoleResult).
+   *
+   * KYC state is NOT checked here. It never travels in the token (see
+   * session-token.ts) and is re-read per request by whichever endpoint the
+   * caller hits next -- an unverified merchant can switch into the merchant
+   * role, they just cannot publish or transact until KYC clears.
+   */
+  async switchRole(userId: string, roleId: string): Promise<SwitchRoleResult> {
+    const roles = await this.uow.withTransaction((tx) =>
+      this.users.findRoles(tx, userId),
+    );
+    const role = roles.find((candidate) => candidate.id === roleId);
+
+    if (!role) {
+      return { status: 'role_not_found' };
+    }
+
+    const token = issueSessionToken(userId, role.id, this.sessionSecret());
+
+    return { status: 'switched', token, roleType: role.type };
   }
 
   private otpSecret(): string {
