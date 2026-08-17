@@ -6,6 +6,8 @@ Anything beyond Phase 1 that gets built early ships **behind a feature flag**, c
 
 ## Phase 1 — MVP (active)
 
+**Build status:** this list is the definition of done, not a progress tracker — items stay unchecked until the full user-facing feature ships, not when a backend piece lands. For what is actually built right now, see [`CURRENT_STATE.md`](../CURRENT_STATE.md).
+
 **Scope:** Customer mode + Merchant mode. Hyperlocal e-commerce + service booking only. bKash/Nagad + COD. Single city launch — design for Dhaka, generalize later.
 
 **Rationale:** proves the core discovery → order → fulfillment loop before anything else.
