@@ -14,10 +14,16 @@ import {
   Injectable,
 } from '@nestjs/common';
 
-import { poishaToTaka } from '../common/money';
+import { poishaToTaka, takaToPoisha } from '../common/money';
+import { LOCATION_PORT, LocationPort } from '../common/ports/location.port';
 import { MERCHANT_PORT, MerchantPort } from '../common/ports/merchant.port';
 
 import { CatalogRepository } from './catalog.repository';
+
+/** Roadmap Phase 1 DoD: "GPS radius discovery (1-10 km)". */
+const MIN_RADIUS_KM = 1;
+const MAX_RADIUS_KM = 10;
+const MAX_SEARCH_RESULTS = 50;
 
 export interface CreateListingCommand {
   /** The caller's active role id -- never trusted from the request body. */
@@ -37,10 +43,27 @@ export interface CreatedListing {
   readonly listingId: string;
 }
 
+export interface SearchNearbyCommand {
+  readonly lat: number;
+  readonly lng: number;
+  readonly radiusKm: number;
+}
+
+export interface NearbyListing {
+  readonly listingId: string;
+  readonly titleBn: string;
+  readonly titleEn: string | null;
+  readonly priceBdtPoisha: number;
+  readonly readyToShip: boolean;
+  readonly type: 'product' | 'service_slot';
+  readonly distanceMeters: number;
+}
+
 @Injectable()
 export class CatalogService {
   constructor(
     @Inject(MERCHANT_PORT) private readonly merchants: MerchantPort,
+    @Inject(LOCATION_PORT) private readonly locations: LocationPort,
     private readonly listings: CatalogRepository,
   ) {}
 
@@ -84,7 +107,13 @@ export class CatalogService {
       throw new BadRequestException('error.catalog.category_requires_licence');
     }
 
-    // --- 3. Persist ----------------------------------------------------------
+    // --- 3. Denormalise geo from the pickup location for radius search -----
+    // Throws NotFoundException only if the id is dangling, which would mean
+    // the FK on role.pickup_location_id was violated some other way -- not
+    // reachable through this path, but not swallowed either.
+    const pickupLocation = await this.locations.findById(merchant.pickupLocationId);
+
+    // --- 4. Persist ----------------------------------------------------------
     const listingId = await this.listings.insertListing({
       ownerRoleId: command.ownerRoleId,
       locationId: merchant.pickupLocationId,
@@ -99,8 +128,44 @@ export class CatalogService {
       // Service slots carry no stock count; a client-supplied 0 would read
       // as "out of stock" rather than "not stock-tracked".
       stockQty: command.type === 'service_slot' ? null : (command.stockQty ?? null),
+      // Both null when the pickup location has no GPS fix -- a manual-address
+      // merchant's listings simply do not surface in radius search, same as
+      // the location itself is a first-class, not degraded, address.
+      lat: pickupLocation.lat,
+      lng: pickupLocation.lng,
     });
 
     return { listingId };
+  }
+
+  /**
+   * Radius search (roadmap Phase 1 DoD: "GPS radius discovery (1-10 km)").
+   *
+   * Always paired with a manual address fallback per
+   * docs/localization/bangladesh-localization.md -- this method covers only
+   * the GPS path; browsing by category/hierarchy is separate, not-yet-built
+   * work (CURRENT_STATE.md).
+   */
+  async searchNearby(command: SearchNearbyCommand): Promise<NearbyListing[]> {
+    if (command.radiusKm < MIN_RADIUS_KM || command.radiusKm > MAX_RADIUS_KM) {
+      throw new BadRequestException('error.catalog.radius_out_of_range');
+    }
+
+    const rows = await this.listings.searchNearby(
+      command.lat,
+      command.lng,
+      command.radiusKm * 1000,
+      MAX_SEARCH_RESULTS,
+    );
+
+    return rows.map((row) => ({
+      listingId: row.id,
+      titleBn: row.title_bn,
+      titleEn: row.title_en,
+      priceBdtPoisha: takaToPoisha(row.price_bdt),
+      readyToShip: row.ready_to_ship,
+      type: row.type,
+      distanceMeters: row.distance_m,
+    }));
   }
 }

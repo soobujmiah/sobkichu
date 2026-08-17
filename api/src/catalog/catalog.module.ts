@@ -5,14 +5,17 @@
  * on the contract without importing anything from this module directly
  * (boundary rule 1).
  *
- * Imports IdentityModule (the .module.ts, for DI wiring only -- boundary
- * rule 3) to reach MERCHANT_PORT: listing creation gates on the same NID KYC
- * check as order creation (compliance row K1).
+ * Imports IdentityModule and LocationModule (the .module.ts files, for DI
+ * wiring only -- boundary rule 3): listing creation gates on the same NID
+ * KYC check as order creation (compliance row K1) via MERCHANT_PORT, and
+ * denormalises the pickup location's coordinates onto `listing.geo` via
+ * LOCATION_PORT so radius search never has to join back to `location`.
  */
 
 import { Module } from '@nestjs/common';
 
 import { IdentityModule } from '../identity/identity.module';
+import { LocationModule } from '../location/location.module';
 
 import { CATALOG_PORT } from '../common/ports/catalog.port';
 
@@ -22,7 +25,7 @@ import { CatalogRepository } from './catalog.repository';
 import { CatalogService } from './catalog.service';
 
 @Module({
-  imports: [IdentityModule],
+  imports: [IdentityModule, LocationModule],
   controllers: [CatalogController],
   providers: [
     CatalogRepository,

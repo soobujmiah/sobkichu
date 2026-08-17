@@ -5,13 +5,15 @@
  * rules live in CatalogService so they are testable without HTTP.
  */
 
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Query } from '@nestjs/common';
 
 import { AuthenticatedCaller } from '../common/auth/auth.guard';
 import { Caller } from '../common/auth/caller.decorator';
+import { Public } from '../common/auth/public.decorator';
 
-import { CatalogService, CreatedListing } from './catalog.service';
+import { CatalogService, CreatedListing, NearbyListing } from './catalog.service';
 import { CreateListingDto } from './dto/create-listing.dto';
+import { SearchListingsDto } from './dto/search-listings.dto';
 
 @Controller('catalog/listings')
 export class CatalogController {
@@ -37,5 +39,12 @@ export class CatalogController {
       readyToShip: dto.readyToShip,
       stockQty: dto.stockQty,
     });
+  }
+
+  // Public: browsing/discovery happens before login, same as any storefront.
+  @Public()
+  @Get('nearby')
+  async nearby(@Query() dto: SearchListingsDto): Promise<NearbyListing[]> {
+    return this.catalog.searchNearby(dto);
   }
 }

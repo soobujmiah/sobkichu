@@ -46,6 +46,23 @@ export interface NewListingRecord {
   readonly priceBdt: string;
   readonly readyToShip: boolean;
   readonly stockQty: number | null;
+  /**
+   * Denormalised from the owning merchant's pickup location, both null when
+   * that location has no GPS fix. `listing.geo` exists so radius search runs
+   * entirely within this table -- see the GIST index in the schema.
+   */
+  readonly lat: number | null;
+  readonly lng: number | null;
+}
+
+export interface NearbyListingRow {
+  id: string;
+  title_bn: string;
+  title_en: string | null;
+  price_bdt: string;
+  ready_to_ship: boolean;
+  type: 'product' | 'service_slot';
+  distance_m: number;
 }
 
 @Injectable()
@@ -75,8 +92,13 @@ export class CatalogRepository {
       `INSERT INTO listing (
          owner_role_id, location_id, type, category_id,
          title_bn, title_en, description_bn, description_en,
-         price_bdt, ready_to_ship, stock_qty
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         price_bdt, ready_to_ship, stock_qty, geo
+       ) VALUES (
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+         CASE WHEN $12::double precision IS NULL THEN NULL
+              ELSE ST_SetSRID(ST_MakePoint($12, $13), 4326)::geography
+         END
+       )
        RETURNING id`,
       [
         record.ownerRoleId,
@@ -90,10 +112,47 @@ export class CatalogRepository {
         record.priceBdt,
         record.readyToShip,
         record.stockQty,
+        record.lng,
+        record.lat,
       ],
     );
 
     return result.rows[0].id;
+  }
+
+  /**
+   * Radius search (roadmap Phase 1 DoD: "GPS radius discovery (1-10 km)").
+   *
+   * Runs entirely against `listing.geo` -- no join back to `location` (or to
+   * `role`), by design (boundary rule 1). Listings whose merchant has no GPS
+   * fix on file simply have `geo IS NULL` and never match; the manual-address
+   * discovery path is a separate, non-radius query this method does not
+   * cover.
+   */
+  async searchNearby(
+    lat: number,
+    lng: number,
+    radiusMeters: number,
+    limit: number,
+  ): Promise<NearbyListingRow[]> {
+    const result = await this.pool.query<NearbyListingRow>(
+      `SELECT l.id, l.title_bn, l.title_en, l.price_bdt, l.ready_to_ship, l.type,
+              ST_Distance(l.geo, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography)
+                AS distance_m
+         FROM listing l
+        WHERE l.is_active
+          AND l.geo IS NOT NULL
+          AND ST_DWithin(
+                l.geo,
+                ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+                $3
+              )
+        ORDER BY distance_m ASC
+        LIMIT $4`,
+      [lng, lat, radiusMeters, limit],
+    );
+
+    return result.rows;
   }
 
   /**

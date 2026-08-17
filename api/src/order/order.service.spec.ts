@@ -40,6 +40,8 @@ const location = (id: string, division: string, district: string): ResolvedLocat
   villageMohalla: null,
   addressLine: null,
   hasGeo: true,
+  lat: null,
+  lng: null,
 });
 
 const listing = (

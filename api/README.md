@@ -6,7 +6,7 @@ Governed by [`MASTER_PROMPT.md`](../MASTER_PROMPT.md). Structure follows [backen
 
 ## Status
 
-The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. A user can **create an address** (`POST /locations`, following the BD Division→District→Upazila/Thana hierarchy, GPS optional), **register as a merchant** against one (`POST /merchants`), **switch into that role** (`POST /auth/roles/switch`), and then **publish listings** (`POST /catalog/listings`, same K1 NID-KYC gate as order creation, plus the C8/C9 category checks) — the full merchant-mode onboarding-to-listing path, including addresses, is now reachable end-to-end, not just unit-tested. 219 tests green in CI (203 unit + 16 integration).
+The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. A user can **create an address** (`POST /locations`, following the BD Division→District→Upazila/Thana hierarchy, GPS optional), **register as a merchant** against one (`POST /merchants`), **switch into that role** (`POST /auth/roles/switch`), and then **publish listings** (`POST /catalog/listings`, same K1 NID-KYC gate as order creation, plus the C8/C9 category checks) — the full merchant-mode onboarding-to-listing path, including addresses, is now reachable end-to-end, not just unit-tested. Listings with a GPS-tagged pickup location are searchable by **radius** (`GET /catalog/listings/nearby`, 1–10 km, public). 225 tests green in CI (209 unit + 16 integration).
 
 | File | What it is |
 |---|---|
@@ -17,7 +17,7 @@ The **full order lifecycle runs against real PostgreSQL** — authenticate, crea
 | [`src/common/compliance/delivery-clock.ts`](src/common/compliance/delivery-clock.ts) | DCOG 2021 delivery clock (C4/C5) — shared by `order` and `payment` |
 | [`src/order/order.service.ts`](src/order/order.service.ts) | Order creation — applies the rules, owns the transaction |
 | [`src/order/order.repository.ts`](src/order/order.repository.ts) | SQL for app_order, order_item, order_status_event |
-| [`src/catalog/catalog.service.ts`](src/catalog/catalog.service.ts) | Listing creation — merchant KYC (K1) and category (C8/C9) gates |
+| [`src/catalog/catalog.service.ts`](src/catalog/catalog.service.ts) | Listing creation (merchant KYC/category gates) and GPS radius search (1–10 km) |
 | [`src/payment/payment.service.ts`](src/payment/payment.service.ts) | Settlement webhook — idempotent, starts the delivery clock |
 | [`src/payment/webhook-signature.ts`](src/payment/webhook-signature.ts) | HMAC verification over the raw body |
 | [`src/notification/`](src/notification/) | Transactional outbox — mandatory SMS alongside push |
@@ -33,7 +33,7 @@ The settlement webhook is in place, so orders now receive a regulated delivery d
 
 Notifications are queued transactionally and dispatched out of band, so SMS is guaranteed rather than hoped for.
 
-Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, NID KYC submission (`role.kyc_status` and `app_user.nid_verification_status` exist and are checked, but nothing sets either to `verified` yet — a merchant can register and switch into the role, but not publish or transact), and GPS radius search (`POST /locations` stores a `geo` point when given one, but nothing queries `ST_DWithin` against it yet).
+Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, NID KYC submission (`role.kyc_status` and `app_user.nid_verification_status` exist and are checked, but nothing sets either to `verified` yet — a merchant can register and switch into the role, but not publish or transact), and the manual-address discovery path (category/hierarchy browse) that radius search must always be paired with per `docs/localization/bangladesh-localization.md` — GPS search alone is an incomplete implementation of that DoD item, not a degraded-but-acceptable one.
 
 ## Authentication
 

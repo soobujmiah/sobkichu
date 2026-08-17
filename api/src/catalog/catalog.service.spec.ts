@@ -13,10 +13,20 @@ import {
 } from '@nestjs/common';
 
 import { takaToPoisha } from '../common/money';
+import { LocationPort, ResolvedLocation } from '../common/ports/location.port';
 import { MerchantPort, MerchantSummary } from '../common/ports/merchant.port';
 
-import { CatalogService, CreateListingCommand } from './catalog.service';
-import { CategoryRow, CatalogRepository, NewListingRecord } from './catalog.repository';
+import {
+  CatalogService,
+  CreateListingCommand,
+  SearchNearbyCommand,
+} from './catalog.service';
+import {
+  CategoryRow,
+  CatalogRepository,
+  NearbyListingRow,
+  NewListingRecord,
+} from './catalog.repository';
 
 const MERCHANT_ROLE = '33333333-3333-4333-8333-000000000003';
 const PICKUP_LOCATION = '11111111-1111-4111-8111-000000000001';
@@ -39,6 +49,30 @@ class FakeMerchantPort implements MerchantPort {
   }
 }
 
+class FakeLocationPort implements LocationPort {
+  constructor(private readonly location: ResolvedLocation) {}
+
+  async findById(): Promise<ResolvedLocation> {
+    return this.location;
+  }
+}
+
+const resolvedLocation = (
+  overrides: Partial<ResolvedLocation> = {},
+): ResolvedLocation => ({
+  id: PICKUP_LOCATION,
+  division: 'Dhaka',
+  district: 'Dhaka',
+  upazilaThana: 'Kotwali',
+  unionWard: null,
+  villageMohalla: null,
+  addressLine: null,
+  hasGeo: true,
+  lat: 23.777176,
+  lng: 90.399452,
+  ...overrides,
+});
+
 const verifiedMerchant = (overrides: Partial<MerchantSummary> = {}): MerchantSummary => ({
   roleId: MERCHANT_ROLE,
   kycVerified: true,
@@ -50,6 +84,9 @@ const verifiedMerchant = (overrides: Partial<MerchantSummary> = {}): MerchantSum
 /** Records what the service tried to persist. */
 class RecordingRepository extends CatalogRepository {
   inserted: NewListingRecord[] = [];
+  nearbyResults: NearbyListingRow[] = [];
+  nearbyCalls: Array<{ lat: number; lng: number; radiusMeters: number; limit: number }> =
+    [];
 
   constructor(private readonly categories: Record<string, CategoryRow>) {
     super(undefined as never);
@@ -62,6 +99,16 @@ class RecordingRepository extends CatalogRepository {
   override async insertListing(record: NewListingRecord): Promise<string> {
     this.inserted.push(record);
     return 'listing-1';
+  }
+
+  override async searchNearby(
+    lat: number,
+    lng: number,
+    radiusMeters: number,
+    limit: number,
+  ): Promise<NearbyListingRow[]> {
+    this.nearbyCalls.push({ lat, lng, radiusMeters, limit });
+    return this.nearbyResults;
   }
 }
 
@@ -97,9 +144,14 @@ const baseCommand = (
 function buildService(
   merchant: MerchantSummary | 'not_found',
   categories: Record<string, CategoryRow> = CATEGORIES,
+  location: ResolvedLocation = resolvedLocation(),
 ) {
   const repository = new RecordingRepository(categories);
-  const service = new CatalogService(new FakeMerchantPort(merchant), repository);
+  const service = new CatalogService(
+    new FakeMerchantPort(merchant),
+    new FakeLocationPort(location),
+    repository,
+  );
   return { service, repository };
 }
 
@@ -119,6 +171,32 @@ describe('CatalogService.createListing', () => {
       readyToShip: true,
       stockQty: 10,
     });
+  });
+
+  it("denormalises the pickup location's coordinates onto the listing", async () => {
+    const { service, repository } = buildService(
+      verifiedMerchant(),
+      CATEGORIES,
+      resolvedLocation({ lat: 23.7, lng: 90.4 }),
+    );
+
+    await service.createListing(baseCommand());
+
+    expect(repository.inserted[0].lat).toBe(23.7);
+    expect(repository.inserted[0].lng).toBe(90.4);
+  });
+
+  it('leaves geo null when the pickup location has no GPS fix', async () => {
+    const { service, repository } = buildService(
+      verifiedMerchant(),
+      CATEGORIES,
+      resolvedLocation({ hasGeo: false, lat: null, lng: null }),
+    );
+
+    await service.createListing(baseCommand());
+
+    expect(repository.inserted[0].lat).toBeNull();
+    expect(repository.inserted[0].lng).toBeNull();
   });
 
   it('rejects when no active role is set (role switching not wired up yet)', async () => {
@@ -190,5 +268,77 @@ describe('CatalogService.createListing', () => {
     const { service } = buildService('not_found');
 
     await expect(service.createListing(baseCommand())).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('CatalogService.searchNearby', () => {
+  const baseSearch = (
+    overrides: Partial<SearchNearbyCommand> = {},
+  ): SearchNearbyCommand => ({
+    lat: 23.777176,
+    lng: 90.399452,
+    radiusKm: 5,
+    ...overrides,
+  });
+
+  it('converts km to metres and maps rows into poisha-priced results', async () => {
+    const { service, repository } = buildService(verifiedMerchant());
+    repository.nearbyResults = [
+      {
+        id: 'listing-1',
+        title_bn: 'পণ্য',
+        title_en: 'Item',
+        price_bdt: '250.00',
+        ready_to_ship: true,
+        type: 'product',
+        distance_m: 1200.5,
+      },
+    ];
+
+    const result = await service.searchNearby(baseSearch({ radiusKm: 3 }));
+
+    expect(repository.nearbyCalls[0]).toMatchObject({
+      lat: 23.777176,
+      lng: 90.399452,
+      radiusMeters: 3000,
+    });
+    expect(result).toEqual([
+      {
+        listingId: 'listing-1',
+        titleBn: 'পণ্য',
+        titleEn: 'Item',
+        priceBdtPoisha: takaToPoisha('250.00'),
+        readyToShip: true,
+        type: 'product',
+        distanceMeters: 1200.5,
+      },
+    ]);
+  });
+
+  it('rejects a radius below 1 km', async () => {
+    const { service } = buildService(verifiedMerchant());
+
+    await expect(service.searchNearby(baseSearch({ radiusKm: 0.5 }))).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('rejects a radius above 10 km', async () => {
+    const { service } = buildService(verifiedMerchant());
+
+    await expect(service.searchNearby(baseSearch({ radiusKm: 11 }))).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('accepts the boundary values 1 and 10 km', async () => {
+    const { service, repository } = buildService(verifiedMerchant());
+
+    await service.searchNearby(baseSearch({ radiusKm: 1 }));
+    await service.searchNearby(baseSearch({ radiusKm: 10 }));
+
+    expect(repository.nearbyCalls.map((call) => call.radiusMeters)).toEqual([
+      1000, 10000,
+    ]);
   });
 });
