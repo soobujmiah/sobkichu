@@ -6,7 +6,7 @@ Governed by [`MASTER_PROMPT.md`](../MASTER_PROMPT.md). Structure follows [backen
 
 ## Status
 
-The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. A user can **register as a merchant** (`POST /merchants`), **switch into that role** (`POST /auth/roles/switch`), and then **publish listings** (`POST /catalog/listings`, same K1 NID-KYC gate as order creation, plus the C8/C9 category checks) — the full merchant-mode onboarding-to-listing path is now reachable end-to-end, not just unit-tested. 214 tests green in CI (198 unit + 16 integration).
+The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. A user can **create an address** (`POST /locations`, following the BD Division→District→Upazila/Thana hierarchy, GPS optional), **register as a merchant** against one (`POST /merchants`), **switch into that role** (`POST /auth/roles/switch`), and then **publish listings** (`POST /catalog/listings`, same K1 NID-KYC gate as order creation, plus the C8/C9 category checks) — the full merchant-mode onboarding-to-listing path, including addresses, is now reachable end-to-end, not just unit-tested. 219 tests green in CI (203 unit + 16 integration).
 
 | File | What it is |
 |---|---|
@@ -25,6 +25,7 @@ The **full order lifecycle runs against real PostgreSQL** — authenticate, crea
 | [`src/identity/domain/otp.ts`](src/identity/domain/otp.ts) | Phone OTP issuance and verification |
 | [`src/identity/auth.service.ts`](src/identity/auth.service.ts) | OTP login and role switching — re-issues the token with a new `activeRoleId` |
 | [`src/identity/merchant-onboarding.service.ts`](src/identity/merchant-onboarding.service.ts) | Registers the merchant Role; relies on the `location` FK rather than a new module dependency |
+| [`src/location/location.service.ts`](src/location/location.service.ts) | Address creation — BD hierarchy, optional GPS pair |
 
 Adapters for all three ports are in place, so the path reads real listings, addresses and merchant KYC state.
 
@@ -32,7 +33,7 @@ The settlement webhook is in place, so orders now receive a regulated delivery d
 
 Notifications are queued transactionally and dispatched out of band, so SMS is guaranteed rather than hoped for.
 
-Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, and NID KYC submission (`role.kyc_status` and `app_user.nid_verification_status` exist and are checked, but nothing sets either to `verified` yet — a merchant can register and switch into the role, but not publish or transact).
+Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, NID KYC submission (`role.kyc_status` and `app_user.nid_verification_status` exist and are checked, but nothing sets either to `verified` yet — a merchant can register and switch into the role, but not publish or transact), and GPS radius search (`POST /locations` stores a `geo` point when given one, but nothing queries `ST_DWithin` against it yet).
 
 ## Authentication
 

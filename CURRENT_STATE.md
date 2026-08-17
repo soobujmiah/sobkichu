@@ -8,9 +8,10 @@ Read this first, every session. Governed by [`MASTER_PROMPT.md`](MASTER_PROMPT.m
 
 ## What's built (api/)
 
-The order lifecycle runs end-to-end against real PostgreSQL: **authenticate → register as merchant → switch into that role → publish a listing / create order → pay (settlement webhook) → confirm → delivery clock starts → notify.** 214 tests green in CI (198 unit + 16 integration) as of the last commit.
+The order lifecycle runs end-to-end against real PostgreSQL: **authenticate → create an address → register as merchant against it → switch into that role → publish a listing / create order → pay (settlement webhook) → confirm → delivery clock starts → notify.** 219 tests green in CI (203 unit + 16 integration) as of the last commit.
 
 - **Identity**: phone OTP auth (E.164 normalized), merchant onboarding (`POST /merchants` — registers the Role; relies on the `location` foreign key rather than adding identity → location as a new module dependency), role switching (`POST /auth/roles/switch` re-issues the token with a new `activeRoleId`, checked against roles the caller actually holds), global `APP_GUARD`, `@Public()` opt-out, Redis rate limiting, session tokens signed with `node:crypto` (no JWT lib — deliberate, stack-locked)
+- **Location**: address creation (`POST /locations`) — BD Division→District→Upazila/Thana hierarchy, `unionWard`/`villageMohalla`/`addressLine` optional, GPS `lat`/`lng` optional but must be paired. No compliance gate (creating an address carries no legal weight until referenced as a pickup or delivery location, which is where the existing K1/C4 checks already live)
 - **Catalog**: listing creation (`POST /catalog/listings`) — merchant KYC gate (K1), prohibited/DGDA category gates (C8/C9), owner and pickup location resolved server-side from the caller's active role, never from the request body
 - **Order**: create-order path, advance-payment cap (DCOG 2021, `src/order/domain/advance-cap.ts`), transaction boundary via `UnitOfWork` (`AsyncLocalStorage`-joined, not nested)
 - **Payment**: settlement webhook, HMAC-verified, idempotent, starts the delivery clock
@@ -26,14 +27,15 @@ Full narrative and rationale: [`api/README.md`](api/README.md).
 - Real SMS/FCM provider wiring (gateways log at WARN when unconfigured — intentional, so a misconfigured deploy is loud)
 - A scheduler to actually run the notification dispatcher
 - Merchant NID KYC submission flow (the `role.kyc_status` / `app_user.nid_verification_status` columns and the K1 gate exist; nothing sets either to `verified`) — this is now the actual blocker on exercising listing creation end-to-end with real data. A merchant can register (`POST /merchants`) and switch into the role, but cannot publish until KYC clears.
-- "Create address" endpoint — `POST /merchants`' `pickupLocationId` and `CreateOrderDto.deliveryLocationId` both require an existing `location` row; nothing creates one yet outside devcontainer seed data
+- GPS radius search — `POST /locations` stores a `geo` point when given one, but nothing runs `ST_DWithin` against it. Address creation and radius search are separate pieces of work; only the former is built.
 - Listing read/update paths (creation only — no edit, no list-my-listings, no deactivate)
-- GPS radius discovery, offline cart sync, Central Admin Panel, accessibility pass — most of the rest of the Phase 1 DoD checklist in [`docs/roadmap.md`](docs/roadmap.md)
+- Offline cart sync, Central Admin Panel, accessibility pass — most of the rest of the Phase 1 DoD checklist in [`docs/roadmap.md`](docs/roadmap.md)
 - `mobile/` (Flutter) — nothing scaffolded yet
 - `api/package-lock.json` — not committed. CI falls back to `npm install` and prints a reproducibility warning on every run. Generate and commit one on the next `api/` PR (needs `npm install` in Codespaces/CI — do not run it locally, per `CONTRIBUTING.md` §"For AI assistants").
 
 ## Recent changes (most recent first)
 
+- `feat(location)`: address creation — `POST /locations`
 - `feat(identity)`: merchant onboarding — `POST /merchants`
 - `feat(identity)`: role switching — `POST /auth/roles/switch`, `GET /auth/roles`
 - `feat(catalog)`: listing creation, gated on merchant KYC and category rules
@@ -55,7 +57,7 @@ Full history: `git log` on `main`.
 ## Next immediate steps
 
 1. Merchant NID KYC submission flow — sets `role.kyc_status` / `app_user.nid_verification_status`; needs a decision on document upload (S3-compatible storage is locked-stack but not wired up anywhere yet)
-2. A "create address" endpoint in `location` (division/district/upazila hierarchy, manual-fallback per Section 5) — both merchant onboarding and order creation currently assume a `location` row already exists
+2. GPS radius search (`ST_DWithin` over `location.geo` / `listing.geo`) now that addresses can carry coordinates — pairs with a `GET /catalog/listings?near=...` or similar read path, which also doesn't exist yet (catalog only has create + the internal cart-resolution read)
 3. Wire a real aggregator client to *initiate* payment (SSLCommerz/ShurjoPay/bKash-Nagad direct — see ADR-0004), not just receive settlement webhooks
 4. Generate and commit `api/package-lock.json`
 5. First Flutter scaffold in `mobile/`, once there's enough API surface to bind a screen to
