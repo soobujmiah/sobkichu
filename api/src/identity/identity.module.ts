@@ -12,14 +12,17 @@ import { MERCHANT_PORT } from '../common/ports/merchant.port';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { MerchantAdapter } from './merchant.adapter';
+import { MerchantOnboardingController } from './merchant-onboarding.controller';
+import { MerchantOnboardingService } from './merchant-onboarding.service';
 import { OtpStore } from './otp.store';
 import { UserRepository } from './user.repository';
 
 @Module({
-  controllers: [AuthController],
+  controllers: [AuthController, MerchantOnboardingController],
   providers: [
     MerchantAdapter,
     AuthService,
+    MerchantOnboardingService,
     OtpStore,
     UserRepository,
     { provide: MERCHANT_PORT, useExisting: MerchantAdapter },
