@@ -98,7 +98,7 @@ export class CatalogService {
       readyToShip: command.readyToShip,
       // Service slots carry no stock count; a client-supplied 0 would read
       // as "out of stock" rather than "not stock-tracked".
-      stockQty: command.type === 'service_slot' ? null : command.stockQty ?? null,
+      stockQty: command.type === 'service_slot' ? null : (command.stockQty ?? null),
     });
 
     return { listingId };
