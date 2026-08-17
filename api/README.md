@@ -6,7 +6,7 @@ Governed by [`MASTER_PROMPT.md`](../MASTER_PROMPT.md). Structure follows [backen
 
 ## Status
 
-The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. 195 tests green in CI (179 unit + 16 integration).
+The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. Merchants can now **publish listings** — same K1 (NID KYC) gate as order creation, plus the C8/C9 category checks. 205 tests green in CI (189 unit + 16 integration).
 
 | File | What it is |
 |---|---|
@@ -17,6 +17,7 @@ The **full order lifecycle runs against real PostgreSQL** — authenticate, crea
 | [`src/common/compliance/delivery-clock.ts`](src/common/compliance/delivery-clock.ts) | DCOG 2021 delivery clock (C4/C5) — shared by `order` and `payment` |
 | [`src/order/order.service.ts`](src/order/order.service.ts) | Order creation — applies the rules, owns the transaction |
 | [`src/order/order.repository.ts`](src/order/order.repository.ts) | SQL for app_order, order_item, order_status_event |
+| [`src/catalog/catalog.service.ts`](src/catalog/catalog.service.ts) | Listing creation — merchant KYC (K1) and category (C8/C9) gates |
 | [`src/payment/payment.service.ts`](src/payment/payment.service.ts) | Settlement webhook — idempotent, starts the delivery clock |
 | [`src/payment/webhook-signature.ts`](src/payment/webhook-signature.ts) | HMAC verification over the raw body |
 | [`src/notification/`](src/notification/) | Transactional outbox — mandatory SMS alongside push |
@@ -29,7 +30,7 @@ The settlement webhook is in place, so orders now receive a regulated delivery d
 
 Notifications are queued transactionally and dispatched out of band, so SMS is guaranteed rather than hoped for.
 
-Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, and role switching (tokens carry an `activeRoleId` but nothing sets it yet).
+Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, and role switching (tokens carry an `activeRoleId` but nothing sets it yet — which means `POST /catalog/listings` is code-complete and tested, but not reachable end-to-end until login can mint a token with a merchant role selected).
 
 ## Authentication
 
