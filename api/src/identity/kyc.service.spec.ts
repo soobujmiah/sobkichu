@@ -98,17 +98,17 @@ describe('KycService.submit', () => {
   it('rejects when no active role is set', async () => {
     const { service } = buildService([unverifiedMerchantRole]);
 
-    await expect(
-      service.submit(baseCommand({ activeRoleId: null })),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.submit(baseCommand({ activeRoleId: null }))).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('rejects a malformed NID number', async () => {
     const { service } = buildService([unverifiedMerchantRole]);
 
-    await expect(
-      service.submit(baseCommand({ nidNumber: 'not-a-nid' })),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.submit(baseCommand({ nidNumber: 'not-a-nid' }))).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('rejects a role the caller does not hold', async () => {
