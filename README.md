@@ -9,6 +9,7 @@ This repository is the **single source of truth** for the project. Code, build, 
 | Path | Purpose |
 |---|---|
 | [`MASTER_PROMPT.md`](MASTER_PROMPT.md) | The persistent master prompt / architecture specification. **Read this first** — it governs everything else. |
+| [`CURRENT_STATE.md`](CURRENT_STATE.md) | What's actually built, what isn't, and the next steps. **Read this second** — read every session. |
 | [`docs/`](docs/README.md) | Documentation set — architecture, data model, compliance, UX, workflow, ADRs |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to work in this repo, and the rules that get broken most |
 | `docs/sobkichu.pdf` | Original PDF source of the master prompt |
@@ -70,11 +71,11 @@ Open the repo in **GitHub Codespaces**. The [devcontainer](.devcontainer/) bring
 | `schema-ci` | Phase 1 schema against real PostGIS + 22 compliance/integrity assertions | ✅ now |
 | `i18n-check` | Bangla coverage for legal keys; no hardcoded strings in either language | ✅ now |
 | `docs-ci` | Internal Markdown links and anchors | ✅ now |
-| `api-ci` | NestJS lint → typecheck → unit → integration | skips until `api/` |
+| `api-ci` | NestJS lint → typecheck → unit → integration | ✅ now |
 | `mobile-ci` | Flutter format → analyze → test → split-ABI APK | skips until `mobile/` |
 
 `schema-ci` is [ADR-0005](docs/adr/0005-compliance-in-schema.md) under test — it proves the advance-payment cap and delivery clock are enforced by the database rather than by a UI any caller can bypass.
 
 ## Status
 
-Phase 1, pre-code. Specification, documentation, dev environment and CI are in place. The Flutter and NestJS codebases are not yet scaffolded — [`docs/data-model/phase-1-schema.sql`](docs/data-model/phase-1-schema.sql) is the ready-to-apply starting schema, and it is already exercised by CI.
+Phase 1, backend in progress. Specification, documentation, dev environment and CI have been in place since the initial commits; the NestJS API (`api/`) is now real code with a working vertical slice, not just scaffolding. The Flutter codebase (`mobile/`) is not yet scaffolded. See [`CURRENT_STATE.md`](CURRENT_STATE.md) for what's built, what isn't, and the next steps.
