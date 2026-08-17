@@ -68,9 +68,9 @@ describe('LocationService.createLocation', () => {
     const repository = new RecordingRepository();
     const service = new LocationService(repository);
 
-    await expect(
-      service.createLocation(baseCommand({ lat: 23.777176 })),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.createLocation(baseCommand({ lat: 23.777176 }))).rejects.toThrow(
+      BadRequestException,
+    );
     expect(repository.inserted).toEqual([]);
   });
 
@@ -78,9 +78,9 @@ describe('LocationService.createLocation', () => {
     const repository = new RecordingRepository();
     const service = new LocationService(repository);
 
-    await expect(
-      service.createLocation(baseCommand({ lng: 90.399452 })),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.createLocation(baseCommand({ lng: 90.399452 }))).rejects.toThrow(
+      BadRequestException,
+    );
     expect(repository.inserted).toEqual([]);
   });
 
