@@ -31,7 +31,7 @@ src/
 
 | Module | Owns | May be called by |
 |---|---|---|
-| `identity` | `app_user`, `role`, `user_saved_location` | all |
+| `identity` | `app_user`, `role`, `user_saved_location`, `kyc_submission` | all |
 | `location` | `location` | all |
 | `catalog` | `listing`, `category` | `order`, `admin` |
 | `order` | `app_order`, `order_item`, `order_status_event` | `payment`, `dispatch`, `admin` |

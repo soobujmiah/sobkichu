@@ -53,11 +53,11 @@ Any proposal that stores customer balance inside our system — including "credi
 
 ## Identity and vehicle verification
 
-| # | Rule | Enforced by | Phase |
-|---|---|---|---|
-| K1 | **NID-based KYC** for Merchant onboarding | `role.kyc_status`, `app_user.nid_verification_status`; merchants cannot publish listings until `verified` | 1 |
-| K2 | NID KYC for Rider onboarding | same fields, rider role | 2 |
-| K3 | **BRTA verification** of driving licence / vehicle registration where the vehicle type requires it | `role.profile` BRTA refs, verified before dispatch eligibility | 2 |
+| # | Rule | Enforced by | Phase | Status |
+|---|---|---|---|---|
+| K1 | **NID-based KYC** for Merchant onboarding | `role.kyc_status`, `app_user.nid_verification_status`; merchants cannot publish listings until `verified` | 1 | Gate enforced (`CatalogService`); submission built (`POST /kyc`); no register check or admin review path yet -- nothing can currently move a role to `verified` |
+| K2 | NID KYC for Rider onboarding | same fields, rider role | 2 | Deferred to Phase 2, flag off |
+| K3 | **BRTA verification** of driving licence / vehicle registration where the vehicle type requires it | `role.profile` BRTA refs, verified before dispatch eligibility | 2 | Deferred to Phase 2, flag off |
 
 KYC document blobs live in object storage with restricted access, never in the public media bucket, and never inline in the database.
 

@@ -6,7 +6,7 @@ Governed by [`MASTER_PROMPT.md`](../MASTER_PROMPT.md). Structure follows [backen
 
 ## Status
 
-The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. A user can **create an address** (`POST /locations`, following the BD Division→District→Upazila/Thana hierarchy, GPS optional), **register as a merchant** against one (`POST /merchants`), **switch into that role** (`POST /auth/roles/switch`), and then **publish listings** (`POST /catalog/listings`, same K1 NID-KYC gate as order creation, plus the C8/C9 category checks) — the full merchant-mode onboarding-to-listing path, including addresses, is now reachable end-to-end, not just unit-tested. Listings with a GPS-tagged pickup location are searchable by **radius** (`GET /catalog/listings/nearby`, 1–10 km, public). 225 tests green in CI (209 unit + 16 integration).
+The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. A user can **create an address** (`POST /locations`, following the BD Division→District→Upazila/Thana hierarchy, GPS optional), **register as a merchant** against one (`POST /merchants`), **switch into that role** (`POST /auth/roles/switch`), and **submit NID KYC** (`POST /kyc`, moves `kyc_status` to `pending` -- there is no register check or admin review path yet, so nothing currently moves it to `verified`, which is what `POST /catalog/listings`' K1 gate actually requires before a listing can be published). Listings with a GPS-tagged pickup location are searchable by **radius** (`GET /catalog/listings/nearby`, 1–10 km, public). 238 tests green in CI (222 unit + 16 integration).
 
 | File | What it is |
 |---|---|
@@ -25,6 +25,8 @@ The **full order lifecycle runs against real PostgreSQL** — authenticate, crea
 | [`src/identity/domain/otp.ts`](src/identity/domain/otp.ts) | Phone OTP issuance and verification |
 | [`src/identity/auth.service.ts`](src/identity/auth.service.ts) | OTP login and role switching — re-issues the token with a new `activeRoleId` |
 | [`src/identity/merchant-onboarding.service.ts`](src/identity/merchant-onboarding.service.ts) | Registers the merchant Role; relies on the `location` FK rather than a new module dependency |
+| [`src/identity/kyc.service.ts`](src/identity/kyc.service.ts) | NID KYC submission — moves `kyc_status` to `pending`; never to `verified` (no register check or admin review path exists) |
+| [`src/identity/domain/nid.ts`](src/identity/domain/nid.ts) | BD NID number shape validation (10/13/17 digits) — no register check |
 | [`src/location/location.service.ts`](src/location/location.service.ts) | Address creation — BD hierarchy, optional GPS pair |
 
 Adapters for all three ports are in place, so the path reads real listings, addresses and merchant KYC state.
@@ -33,7 +35,7 @@ The settlement webhook is in place, so orders now receive a regulated delivery d
 
 Notifications are queued transactionally and dispatched out of band, so SMS is guaranteed rather than hoped for.
 
-Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, NID KYC submission (`role.kyc_status` and `app_user.nid_verification_status` exist and are checked, but nothing sets either to `verified` yet — a merchant can register and switch into the role, but not publish or transact), and the manual-address discovery path (category/hierarchy browse) that radius search must always be paired with per `docs/localization/bangladesh-localization.md` — GPS search alone is an incomplete implementation of that DoD item, not a degraded-but-acceptable one.
+Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, the manual-address discovery path (category/hierarchy browse) that radius search must always be paired with per `docs/localization/bangladesh-localization.md` — GPS search alone is an incomplete implementation of that DoD item, not a degraded-but-acceptable one — and a way to actually reach `verified`: `POST /kyc` moves `kyc_status`/`nid_verification_status` to `pending` only. There is no National ID register integration (no vendor named yet) and no admin review path (Central Admin Panel is separate, unbuilt), so no code path in this repository can currently mark a merchant verified.
 
 ## Authentication
 

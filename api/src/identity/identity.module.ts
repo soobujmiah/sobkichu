@@ -11,6 +11,8 @@ import { MERCHANT_PORT } from '../common/ports/merchant.port';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { KycController } from './kyc.controller';
+import { KycService } from './kyc.service';
 import { MerchantAdapter } from './merchant.adapter';
 import { MerchantOnboardingController } from './merchant-onboarding.controller';
 import { MerchantOnboardingService } from './merchant-onboarding.service';
@@ -18,11 +20,12 @@ import { OtpStore } from './otp.store';
 import { UserRepository } from './user.repository';
 
 @Module({
-  controllers: [AuthController, MerchantOnboardingController],
+  controllers: [AuthController, MerchantOnboardingController, KycController],
   providers: [
     MerchantAdapter,
     AuthService,
     MerchantOnboardingService,
+    KycService,
     OtpStore,
     UserRepository,
     { provide: MERCHANT_PORT, useExisting: MerchantAdapter },
