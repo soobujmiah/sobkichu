@@ -26,6 +26,7 @@ One identity per human. Never duplicated per role.
 |---|---|
 | `id` | UUID |
 | `phone_e164` | Primary identifier in BD context — phone, not email |
+| `nid_number` | Set on KYC submission (migration 002); one NID per human, regardless of how many Roles they hold |
 | `nid_verification_status` | `unverified` / `pending` / `verified` / `rejected` |
 | `language_preference` | `bn` default, `en` secondary — see [i18n conventions](../localization/i18n-conventions.md) |
 | `default_location_id` | FK → Location |
@@ -44,6 +45,8 @@ Role-specific profile data hangs here, keeping User thin.
 | `professional` | 3 | credential/licence refs |
 
 Phase 2+ role types exist in the enum but are flag-gated at the API. Reserving the enum value now avoids a breaking migration later.
+
+`kyc_submission` (migration 002) is a Role's append-only KYC submission history -- reference URLs into object storage, never document content (compliance matrix row K1). A resubmission after rejection adds a row rather than overwriting one, same audit reasoning as `order_status_event`.
 
 ## Listing
 

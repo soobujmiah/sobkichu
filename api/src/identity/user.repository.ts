@@ -1,7 +1,7 @@
 /**
  * User repository.
  *
- * `identity` owns app_user, role and user_saved_location.
+ * `identity` owns app_user, role, user_saved_location and kyc_submission.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -95,5 +95,40 @@ export class UserRepository {
     );
 
     return rows[0] ?? null;
+  }
+
+  /**
+   * Record a KYC submission.
+   *
+   * Three writes, one transaction: the NID number lands on `app_user`
+   * (person-level -- one NID per human, regardless of how many roles they
+   * hold), `kyc_status` moves to 'pending' on the specific `role` being
+   * verified, and the submission itself is appended to `kyc_submission` as
+   * an audit record (migration 002) -- a resubmission after rejection must
+   * not destroy the record of the earlier attempt.
+   *
+   * Does not decide whether to allow the submission (role ownership,
+   * already-verified) -- that is KycService's job. This method only writes.
+   */
+  async submitKyc(
+    tx: TransactionContext,
+    userId: string,
+    roleId: string,
+    nidNumber: string,
+    documentUrls: readonly string[],
+  ): Promise<void> {
+    await tx.query(
+      `UPDATE app_user
+          SET nid_number = $1, nid_verification_status = 'pending', updated_at = now()
+        WHERE id = $2`,
+      [nidNumber, userId],
+    );
+
+    await tx.query(`UPDATE role SET kyc_status = 'pending' WHERE id = $1`, [roleId]);
+
+    await tx.query(
+      `INSERT INTO kyc_submission (role_id, document_urls) VALUES ($1, $2)`,
+      [roleId, documentUrls as string[]],
+    );
   }
 }
