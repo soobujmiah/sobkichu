@@ -41,10 +41,7 @@ export class AuthController {
 
   @Post('roles/switch')
   @HttpCode(200)
-  async switchRole(
-    @Body() dto: SwitchRoleDto,
-    @Caller() caller: AuthenticatedCaller,
-  ) {
+  async switchRole(@Body() dto: SwitchRoleDto, @Caller() caller: AuthenticatedCaller) {
     // roleId comes from the body, but ownership is checked against the
     // verified session's userId -- the body cannot make the service switch
     // into a role owned by someone else.
