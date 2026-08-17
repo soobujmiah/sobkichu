@@ -66,4 +66,34 @@ export class UserRepository {
       kycVerified: row.kyc_status === 'verified',
     }));
   }
+
+  /**
+   * Register the merchant Role for a user.
+   *
+   * `ON CONFLICT ... DO NOTHING` rather than check-then-insert, same
+   * reasoning as `findOrCreateByPhone`: two concurrent onboarding submits
+   * would otherwise race. `role.type` has one merchant row per user (schema
+   * UNIQUE (user_id, type)), so a conflict here means "already a merchant",
+   * not a retry-safe no-op -- the caller distinguishes null from a row.
+   *
+   * Does not validate `pickupLocationId` itself; the `location` foreign key
+   * does, and a violation propagates as a plain pg error (code 23503) for
+   * the caller to translate.
+   */
+  async createMerchantRole(
+    tx: TransactionContext,
+    userId: string,
+    pickupLocationId: string,
+    profile: Record<string, unknown>,
+  ): Promise<{ id: string } | null> {
+    const rows = await tx.query<{ id: string }>(
+      `INSERT INTO role (user_id, type, profile, pickup_location_id)
+       VALUES ($1, 'merchant', $2::jsonb, $3)
+       ON CONFLICT (user_id, type) DO NOTHING
+       RETURNING id`,
+      [userId, JSON.stringify(profile), pickupLocationId],
+    );
+
+    return rows[0] ?? null;
+  }
 }

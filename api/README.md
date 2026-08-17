@@ -6,7 +6,7 @@ Governed by [`MASTER_PROMPT.md`](../MASTER_PROMPT.md). Structure follows [backen
 
 ## Status
 
-The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. Merchants can now **publish listings** — same K1 (NID KYC) gate as order creation, plus the C8/C9 category checks — and a caller can **switch into a role** (`POST /auth/roles/switch`) they hold, so listing creation is reachable end-to-end rather than just unit-tested. 210 tests green in CI (194 unit + 16 integration).
+The **full order lifecycle runs against real PostgreSQL** — authenticate, create, pay, confirm, delivery clock, notify. A user can **register as a merchant** (`POST /merchants`), **switch into that role** (`POST /auth/roles/switch`), and then **publish listings** (`POST /catalog/listings`, same K1 NID-KYC gate as order creation, plus the C8/C9 category checks) — the full merchant-mode onboarding-to-listing path is now reachable end-to-end, not just unit-tested. 214 tests green in CI (198 unit + 16 integration).
 
 | File | What it is |
 |---|---|
@@ -24,6 +24,7 @@ The **full order lifecycle runs against real PostgreSQL** — authenticate, crea
 | [`src/common/auth/`](src/common/auth/) | Session guard, tokens, `@Public()` / `@Caller()` |
 | [`src/identity/domain/otp.ts`](src/identity/domain/otp.ts) | Phone OTP issuance and verification |
 | [`src/identity/auth.service.ts`](src/identity/auth.service.ts) | OTP login and role switching — re-issues the token with a new `activeRoleId` |
+| [`src/identity/merchant-onboarding.service.ts`](src/identity/merchant-onboarding.service.ts) | Registers the merchant Role; relies on the `location` FK rather than a new module dependency |
 
 Adapters for all three ports are in place, so the path reads real listings, addresses and merchant KYC state.
 
@@ -31,7 +32,7 @@ The settlement webhook is in place, so orders now receive a regulated delivery d
 
 Notifications are queued transactionally and dispatched out of band, so SMS is guaranteed rather than hoped for.
 
-Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, and merchant onboarding (there is no endpoint yet that creates a `role` row of type `merchant` for a user — `POST /auth/roles/switch` can only switch into a role that already exists).
+Not yet built: outbound calls to an aggregator to *initiate* payment (we only receive settlement notices), real SMS/FCM providers (the gateways log at WARN so an unconfigured deployment is visible), a scheduler to run the dispatcher, and NID KYC submission (`role.kyc_status` and `app_user.nid_verification_status` exist and are checked, but nothing sets either to `verified` yet — a merchant can register and switch into the role, but not publish or transact).
 
 ## Authentication
 
