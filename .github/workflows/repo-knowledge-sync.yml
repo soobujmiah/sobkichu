@@ -1,0 +1,123 @@
+name: Repo Knowledge Sync
+
+# Deterministic repository state sync — governed by governance/DETERMINISTIC_STATE_SYNC_POLICY.md.
+#
+# Two jobs:
+#   - test: runs tools/repo_knowledge's own unit tests. Allowed to fail without blocking sync.
+#   - sync: ALWAYS runs (even if `test` failed -- policy rule 4/7), collects deterministic state
+#           and commits .repo/ back to THIS repo only.
+#
+# This repository does NOT push anything to SKB and needs no credential for SKB at all.
+# SKB pulls this repository's .repo/project.yaml itself, on its own schedule, using its own
+# ambient token (.github/workflows/registry-pull.yml in soobujmiah/skb) -- see
+# scripts/pull_skb_registry.py's module docstring in SKB for the full model. A repository only
+# becomes a synchronization participant when SKB's projects/registry/index.json explicitly
+# registers it (the "Register" step of the rollout process) -- never automatically.
+#
+# scripts/push_skb_registry.py (a cross-repo write from THIS repo into SKB) is NOT part of this
+# template and must not be re-added: the default GITHUB_TOKEN a workflow receives cannot write to
+# a different repository, and no participating repository should be given a credential that can.
+#
+# paths-ignore on the push trigger stops re-triggering from the bot commit itself.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.repo/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: python -m pip install --quiet pyyaml
+
+      - name: Run tools/repo_knowledge tests
+        run: python3 -m unittest discover -s tools/repo_knowledge/tests -p 'test_*.py' -v
+
+  sync:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: python -m pip install --quiet pyyaml
+
+      # ---- Build/test signal ----
+      # Each participating repository SHOULD replace this block with its own build/test command.
+      # The exit code (not just the JSON) is what determines build.status / test.status below.
+      - name: Run project build validation
+        id: build
+        continue-on-error: true
+        run: |
+          echo "Replace this step with your project's actual build command."
+          echo "Exit 0 = passed, non-zero = failed."
+          exit 0
+
+      - name: Run project test suite
+        id: tests
+        continue-on-error: true
+        run: |
+          echo "Replace this step with your project's actual test command."
+          echo "Exit 0 = passed, non-zero = failed."
+          exit 0
+
+      # ---- Deterministic state sync ----
+      - name: Collect and sync local .repo/ state
+        id: collect
+        if: always()
+        run: |
+          BUILD_STATUS="${{ steps.build.outcome == 'success' && 'passed' || steps.build.outcome == 'failure' && 'failed' || 'unknown' }}"
+          TEST_STATUS="${{ steps.tests.outcome == 'success' && 'passed' || steps.tests.outcome == 'failure' && 'failed' || 'unknown' }}"
+          python3 -m tools.repo_knowledge sync --ci \
+            --build-status "$BUILD_STATUS" --build-run-id "${{ github.run_id }}" \
+            --test-status "$TEST_STATUS"
+
+      - name: Verify .repo/ against schemas
+        if: always()
+        run: python3 -m tools.repo_knowledge verify
+
+      # No "push to SKB" step here on purpose. This repository is read by SKB's own
+      # scheduled pull workflow; it never pushes to SKB and holds no SKB write credential.
+      # See the header comment above and scripts/push_skb_registry.py's docstring in SKB
+      # for why that direction was retired rather than fixed.
+
+      # ---- Commit local .repo/ changes ----
+      - name: Commit updated .repo/ state
+        if: always() && github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- .repo; then
+            echo "no .repo/ change to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .repo
+          git commit -m "chore(repo-knowledge): sync deterministic state for ${{ github.sha }}"
+          git push origin HEAD:${{ github.ref_name }}
