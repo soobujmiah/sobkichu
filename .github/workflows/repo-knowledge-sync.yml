@@ -69,23 +69,40 @@ jobs:
         run: python -m pip install --quiet pyyaml
 
       # ---- Build/test signal ----
-      # Each participating repository SHOULD replace this block with its own build/test command.
-      # The exit code (not just the JSON) is what determines build.status / test.status below.
+      # sobkichu has 5 separate existing CI workflows (api-ci, mobile-ci, docs-ci,
+      # i18n-check, schema-ci). api-ci.yml's own `build` job runs the full
+      # PostgreSQL+PostGIS+Redis integration and compliance suite -- deliberately NOT
+      # duplicated here (same reasoning as adt/lai's workflow_run pattern: don't re-run an
+      # expensive, already-scheduled suite). Instead:
+      #   build.status <- api/'s lint + typecheck (cheap, no services, mirrors api-ci.yml's
+      #                    own "static" job, real on every push regardless of path filters).
+      #   test.status  <- api/'s fast unit tests only (`test:unit`, excludes `int-spec`).
+      # The PostGIS-backed integration + compliance suite (api-ci.yml `build` job) and the
+      # schema/docs/i18n checks remain their own separate, unduplicated CI and are not
+      # rolled into this mechanical signal -- see this repo's row in SKB's
+      # DETERMINISTIC_STATE_SYNC_POLICY.md participation table for the explicit tradeoff.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install api/ dependencies
+        working-directory: api
+        run: npm ci --no-audit --no-fund
+
       - name: Run project build validation
         id: build
         continue-on-error: true
-        run: |
-          echo "Replace this step with your project's actual build command."
-          echo "Exit 0 = passed, non-zero = failed."
-          exit 0
+        working-directory: api
+        run: npm run lint && npx tsc --noEmit
 
       - name: Run project test suite
         id: tests
         continue-on-error: true
-        run: |
-          echo "Replace this step with your project's actual test command."
-          echo "Exit 0 = passed, non-zero = failed."
-          exit 0
+        working-directory: api
+        run: npm run test:unit -- --ci
 
       # ---- Deterministic state sync ----
       - name: Collect and sync local .repo/ state
@@ -96,7 +113,7 @@ jobs:
           TEST_STATUS="${{ steps.tests.outcome == 'success' && 'passed' || steps.tests.outcome == 'failure' && 'failed' || 'unknown' }}"
           python3 -m tools.repo_knowledge sync --ci \
             --build-status "$BUILD_STATUS" --build-run-id "${{ github.run_id }}" \
-            --test-status "$TEST_STATUS"
+            --test-status "$TEST_STATUS" --test-summary "api/ jest --testPathIgnorePatterns int-spec (unit only; PostGIS/Redis integration+compliance suite stays in api-ci.yml, unduplicated)"
 
       - name: Verify .repo/ against schemas
         if: always()
