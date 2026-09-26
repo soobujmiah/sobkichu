@@ -1,30 +1,34 @@
 schema_version: 1
 project_id: sobkichu
 repository: soobujmiah/sobkichu
-generated_at: '2026-09-26T18:01:24Z'
+generated_at: '2026-09-26T18:05:49Z'
 generated_by: tools/repo_knowledge collect
-version: 360b0b5
+version: ab07ba0
 head:
-  commit: 360b0b565ac7b67ee506ff99f48a3eafea6cfff1
-  branch: chore/deterministic-repo-knowledge-sync
-  committed_at: '2026-09-26T17:59:35Z'
+  commit: ab07ba02a06bb09b1841e2b372b3406ea5eaed42
+  branch: main
+  committed_at: '2026-09-26T18:04:40Z'
 phases:
   source: not_configured
   completed: []
   active: null
   next: null
 build:
-  status: unknown
-  run_id: null
-  at: null
+  status: passed
+  run_id: '36261268576'
+  at: '2026-09-26T18:05:49Z'
 test:
-  status: unknown
+  status: passed
   run_id: null
-  at: null
-  summary: null
-last_successful_build: null
+  at: '2026-09-26T18:05:49Z'
+  summary: api/ jest --testPathIgnorePatterns int-spec (unit only; PostGIS/Redis integration+compliance
+    suite stays in api-ci.yml, unduplicated)
+last_successful_build:
+  commit: ab07ba02a06bb09b1841e2b372b3406ea5eaed42
+  at: '2026-09-26T18:05:49Z'
+  run_id: '36261268576'
 last_failed_build: null
 sync:
   status: ok
-  last_synced_at: '2026-09-26T18:01:24Z'
-  source: local
+  last_synced_at: '2026-09-26T18:05:49Z'
+  source: ci

@@ -1,0 +1,8 @@
+event_id: test-ab07ba0-20260926180549Z
+repository: soobujmiah/sobkichu
+commit: ab07ba02a06bb09b1841e2b372b3406ea5eaed42
+kind: test
+occurred_at: '2026-09-26T18:05:49Z'
+status: passed
+summary: api/ jest --testPathIgnorePatterns int-spec (unit only; PostGIS/Redis integration+compliance
+  suite stays in api-ci.yml, unduplicated)
