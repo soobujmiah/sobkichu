@@ -81,16 +81,32 @@ jobs:
       # schema/docs/i18n checks remain their own separate, unduplicated CI and are not
       # rolled into this mechanical signal -- see this repo's row in SKB's
       # DETERMINISTIC_STATE_SYNC_POLICY.md participation table for the explicit tradeoff.
+      - name: Detect lockfile
+        id: lock
+        run: |
+          if [ -f api/package-lock.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: ${{ steps.lock.outputs.present == 'true' && 'npm' || '' }}
           cache-dependency-path: api/package-lock.json
 
       - name: Install api/ dependencies
         working-directory: api
-        run: npm ci --no-audit --no-fund
+        # No lockfile is committed yet (matches api-ci.yml's own fallback) -- npm ci
+        # would refuse to run without one.
+        run: |
+          if [ "${{ steps.lock.outputs.present }}" = "true" ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
 
       - name: Run project build validation
         id: build
