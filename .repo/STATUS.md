@@ -2,15 +2,15 @@
 # sobkichu -- deterministic status
 
 - Repository: `soobujmiah/sobkichu`
-- Generated at: 2026-09-26T18:05:49Z (by `tools/repo_knowledge collect`)
-- Version: `ab07ba0`
-- Head: `ab07ba02a06bb09b1841e2b372b3406ea5eaed42` on `main` (2026-09-26T18:04:40Z)
+- Generated at: 2026-09-26T21:50:31Z (by `tools/repo_knowledge collect`)
+- Version: `dfc7b9c`
+- Head: `dfc7b9c00026473539f653a1eab52c007ec06e4f` on `main` (2026-09-26T21:49:31Z)
 
 ## Build / test
 
-- Build: **passed** (run `36261268576`)
+- Build: **passed** (run `36274241805`)
 - Test: **passed** -- api/ jest --testPathIgnorePatterns int-spec (unit only; PostGIS/Redis integration+compliance suite stays in api-ci.yml, unduplicated)
-- Last successful build: `ab07ba02a06bb09b1841e2b372b3406ea5eaed42` at 2026-09-26T18:05:49Z
+- Last successful build: `dfc7b9c00026473539f653a1eab52c007ec06e4f` at 2026-09-26T21:50:31Z
 
 ## Phases
 - Not configured (no `.repo/phases.yaml`).
@@ -19,4 +19,4 @@
 
 - Status: ok
 - Source: ci
-- Last synced at: 2026-09-26T18:05:49Z
+- Last synced at: 2026-09-26T21:50:31Z
