@@ -31,3 +31,6 @@ coverage/
 api/dist/
 api/coverage/
 api/.eslintcache
+
+__pycache__/
+*.py[cod]
