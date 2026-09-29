@@ -1,0 +1,14 @@
+event_id: test-3d9cf446a919-36640668325-1
+repository: soobujmiah/sobkichu
+commit: 3d9cf446a919ad251ec09da7c72135026add2890
+kind: test
+occurred_at: '2026-09-29T22:42:16Z'
+run_id: '36640668325'
+run_attempt: '1'
+status: passed
+summary: api/ jest --testPathIgnorePatterns int-spec (unit only; PostGIS/Redis integration+compliance
+  suite stays in api-ci.yml, unduplicated)
+workflow_name: Repo Knowledge Sync
+event_type: push
+actor: soobujmiah
+run_url: https://github.com/soobujmiah/sobkichu/actions/runs/36640668325

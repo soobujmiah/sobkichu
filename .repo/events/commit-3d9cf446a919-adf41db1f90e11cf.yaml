@@ -1,0 +1,8 @@
+event_id: commit-3d9cf446a919-adf41db1f90e11cf
+repository: soobujmiah/sobkichu
+commit: 3d9cf446a919ad251ec09da7c72135026add2890
+kind: commit
+occurred_at: '2026-09-29T22:37:28Z'
+status: completed
+summary: Declare the repository's canonical type and add the documentation scaffold
+  (migration waves 2/3)
